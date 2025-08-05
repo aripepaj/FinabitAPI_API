@@ -1857,7 +1857,7 @@ namespace FinabitAPI.Utilis
             return clsList;
         }
 
-        public List<Orders> GetTransactions(string FromDate, string ToDate,  int Type)
+        public List<Orders> GetTransactions(string FromDate, string ToDate, int Type, string ItemID = null, string ItemName = null, string PartnerName = null)
         {
             List<Orders> clsList = new List<Orders>();
 
@@ -1885,9 +1885,24 @@ namespace FinabitAPI.Utilis
                 param.Value = Type;
                 cmd.Parameters.Add(param);
 
+                // New parameters
+                param = new SqlParameter("@ItemID", SqlDbType.NVarChar, 200);
+                param.Direction = ParameterDirection.Input;
+                param.Value = string.IsNullOrEmpty(ItemID) ? "%" : ItemID;
+                cmd.Parameters.Add(param);
+
+                param = new SqlParameter("@ItemName", SqlDbType.NVarChar, 200);
+                param.Direction = ParameterDirection.Input;
+                param.Value = string.IsNullOrEmpty(ItemName) ? "%" : ItemName;
+                cmd.Parameters.Add(param);
+
+                param = new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200);
+                param.Direction = ParameterDirection.Input;
+                param.Value = string.IsNullOrEmpty(PartnerName) ? "%" : PartnerName;
+                cmd.Parameters.Add(param);
+
                 try
                 {
-
                     SqlDataReader dr = cmd.ExecuteReader();
                     if (dr.HasRows)
                     {
@@ -1896,26 +1911,17 @@ namespace FinabitAPI.Utilis
                             Orders cls = new Orders();
                             cls.ID = Convert.ToInt32(dr["ID"]);
                             cls.Data = Convert.ToDateTime(dr["Data"]);
-
                             cls.Numri = Convert.ToString(dr["Numri"]);
-
                             cls.ID_Konsumatorit = Convert.ToInt32(dr["ID_Konsumatorit"]);
-
                             cls.Konsumatori = Convert.ToString(dr["Konsumatori"]);
                             cls.Komercialisti = Convert.ToString(dr["Komercialisti"]);
                             cls.Statusi_Faturimit = Convert.ToString(dr["Statusi_Faturimit"]);
-
                             cls.Shifra = Convert.ToString(dr["Shifra"]);
-
                             cls.Emertimi = Convert.ToString(dr["Emertimi"]);
                             cls.Njesia_Artik = Convert.ToString(dr["Njesia_Artik"]);
-
                             cls.Sasia = Convert.ToDecimal(dr["Sasia"]);
                             cls.Cmimi = Convert.ToDecimal(dr["Cmimi"]);
-
-
                             clsList.Add(cls);
-
                         }
                     }
                     cnn.Close();

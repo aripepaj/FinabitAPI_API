@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace FinabitAPI.Controllers
 {
-    [ApiExplorerSettings(IgnoreApi = true)]
+    //[ApiExplorerSettings(IgnoreApi = true)]
     [ApiController]
     [Route("api/[controller]")]
     public class TransactionsController : ControllerBase
@@ -986,11 +986,16 @@ namespace FinabitAPI.Controllers
 
 
         [HttpGet("TransactionsList")]
-        public ActionResult<List<Orders>> TransactionsList([FromQuery] string FromDate, [FromQuery] string ToDate, [FromQuery] int TransactionTypeID)
+        public ActionResult<List<Orders>> TransactionsList(
+            [FromQuery] string FromDate,
+            [FromQuery] string ToDate,
+            [FromQuery] int TransactionTypeID,
+            [FromQuery] string ItemID = null,
+            [FromQuery] string ItemName = null,
+            [FromQuery] string PartnerName = null)
         {
-            return GetTransactions(FromDate, ToDate, TransactionTypeID);
+            return GetTransactions(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName);
         }
-
 
         private void PayTransaction(decimal PaymentValue,int id)
         {
@@ -2302,9 +2307,9 @@ namespace FinabitAPI.Controllers
         }
 
 
-        private List<Orders> GetTransactions(string FromDate,string ToDate,int TranTypeID)
+        private List<Orders> GetTransactions(string FromDate, string ToDate, int TranTypeID, string ItemID = null, string ItemName = null, string PartnerName = null)
         {
-            return _dbAccess.GetTransactions(FromDate, ToDate, TranTypeID);
+            return _dbAccess.GetTransactions(FromDate, ToDate, TranTypeID, ItemID, ItemName, PartnerName);
         }
 
         private Transactions GetTransaction(XMLTransactions t)
