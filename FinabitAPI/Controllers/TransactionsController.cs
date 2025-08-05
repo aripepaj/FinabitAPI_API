@@ -11,11 +11,11 @@ using System.Text.RegularExpressions;
 
 namespace FinabitAPI.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     [ApiController]
     [Route("api/[controller]")]
     public class TransactionsController : ControllerBase
     {
-
         private readonly IConfiguration _configuration;
         private readonly DBAccess _dbAccess;
         private readonly EmployeesRepository _dalEmployee;
