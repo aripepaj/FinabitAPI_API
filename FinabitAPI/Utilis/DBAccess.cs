@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using Microsoft.Data.SqlClient;
+using Finabit_API.Models;
 
-namespace Finabit_API.Models
+namespace FinabitAPI.Utilis
 {
     public class DBAccess
     {
@@ -33,7 +34,7 @@ namespace Finabit_API.Models
 
 
                 SqlParameter param;
-                param = new SqlParameter("@p_DepartamentID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@p_DepartamentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = DepartmentID;
                 cmd.Parameters.Add(param);
@@ -99,12 +100,12 @@ namespace Finabit_API.Models
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 SqlParameter param;
-                param = new SqlParameter("@Items", System.Data.SqlDbType.Structured);
+                param = new SqlParameter("@Items", SqlDbType.Structured);
                 param.Direction = ParameterDirection.Input;
                 param.Value = dt;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@Email", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Email", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
@@ -156,12 +157,12 @@ namespace Finabit_API.Models
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 SqlParameter param;
-                param = new SqlParameter("@ItemID", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@ItemID", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = ItemID;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@Email", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Email", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
@@ -213,7 +214,7 @@ namespace Finabit_API.Models
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 SqlParameter param;
-                param = new SqlParameter("@Date", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Date", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Date;
                 cmd.Parameters.Add(param);
@@ -370,7 +371,7 @@ namespace Finabit_API.Models
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 SqlParameter param;
-                param = new SqlParameter("@Prodhuesi", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Prodhuesi", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Prodhuesi;
                 cmd.Parameters.Add(param);
@@ -469,12 +470,12 @@ namespace Finabit_API.Models
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 SqlParameter param;
-                param = new SqlParameter("@Items", System.Data.SqlDbType.Structured);
+                param = new SqlParameter("@Items", SqlDbType.Structured);
                 param.Direction = ParameterDirection.Input;
                 param.Value = dt;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@Email", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Email", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
@@ -638,17 +639,17 @@ namespace Finabit_API.Models
                 cmd.CommandTimeout = 0;
 
                 SqlParameter param;
-                param = new SqlParameter("@TypeID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@TypeID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = TransactionType;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@Date", System.Data.SqlDbType.SmallDateTime);
+                param = new SqlParameter("@Date", SqlDbType.SmallDateTime);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Date;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@DepartmentID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = DepartmentID;
                 cmd.Parameters.Add(param);
@@ -681,7 +682,7 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@DepartmentID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.ID;
                 cmd.Parameters.Add(param);
@@ -733,7 +734,7 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@VATID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@VATID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.VATID;
                 cmd.Parameters.Add(param);
@@ -847,310 +848,310 @@ namespace Finabit_API.Models
                 try
                 {
                     SqlParameter param;
-                    param = new SqlParameter("@TransactionTypeID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@TransactionTypeID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.TransactionTypeID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@TransactionDate", System.Data.SqlDbType.DateTime);
+                    param = new SqlParameter("@TransactionDate", SqlDbType.DateTime);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.TransactionDate;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@InvoiceDate", System.Data.SqlDbType.SmallDateTime);
+                    param = new SqlParameter("@InvoiceDate", SqlDbType.SmallDateTime);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InvoiceDate;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@DueDate", System.Data.SqlDbType.SmallDateTime);
+                    param = new SqlParameter("@DueDate", SqlDbType.SmallDateTime);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.DueDate;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@TransactionNo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@TransactionNo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.TransactionNo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@DUDNo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@DUDNo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.DUDNo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@InvoiceNo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@InvoiceNo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InvoiceNo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VAT", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@VAT", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VAT;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@InPL", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@InPL", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InPL;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PartnerID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@PartnerID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PartnerID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PartnersAddress", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@PartnersAddress", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PartnersAddress;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PartnersContactPerson", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@PartnersContactPerson", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PartnersContactPerson;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PartnersPhoneNo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@PartnersPhoneNo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PartnersPhoneNo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@DepartmentID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.DepartmentID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@DriverID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@DriverID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.DriverID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PlateNo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@PlateNo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PlateNo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@InternalDepartmentID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@InternalDepartmentID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InternalDepartmentID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@EmpID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@EmpID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.EmpID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@CashAccount", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@CashAccount", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.CashAccount;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Import", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@Import", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Import;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Value", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@Value", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Value;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VATValue", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@VATValue", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VATValue;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@AllValue", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@AllValue", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.AllValue;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PaidValue", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@PaidValue", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PaidValue;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VATPercent", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@VATPercent", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VATPercent;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VATPercentID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@VATPercentID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VATPercentID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Memo", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@Memo", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Memo;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Reference", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@Reference", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Reference;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Links", System.Data.SqlDbType.NVarChar);
+                    param = new SqlParameter("@Links", SqlDbType.NVarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Links;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Active", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@Active", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Active;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@JournalStatus", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@JournalStatus", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.JournalStatus;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@InsBy", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@InsBy", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InsBy;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@LUB", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@LUB", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.InsBy;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@prmErrorID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@prmErrorID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Output;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@prmNewID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@prmNewID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Output;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Transport", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@Transport", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Transport;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Dogana", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@Dogana", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Dogana;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Akciza", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@Akciza", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Akciza;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@RABAT", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@RABAT", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.RABAT;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@TableID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@TableID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.TableID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@POSStatus", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@POSStatus", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.POSStatus;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@TerminID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@TerminID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.TerminID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Commission1", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@Commission1", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Commission1;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Commission2", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@Commission2", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Commission2;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Commission3", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@Commission3", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Commission3;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@SuficitAccount", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@SuficitAccount", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.SuficitAccount;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@DeficitAccount", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@DeficitAccount", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.DeficitAccount;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VehicleID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@VehicleID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VehicleID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@ItemID", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@ItemID", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.ItemID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Quantity", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@Quantity", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Quantity;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@CurrencyID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@CurrencyID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.CurrencyID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@CurrencyRate", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@CurrencyRate", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.CurrencyRate;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@OverValue", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@OverValue", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.OverValue;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Charges", System.Data.SqlDbType.Money);
+                    param = new SqlParameter("@Charges", SqlDbType.Money);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Charges;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PartnerItemID", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@PartnerItemID", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PartnerItemID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@ContractID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@ContractID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.ContractID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@POSPaid", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@POSPaid", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.POSPaid;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@HReservationID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@HReservationID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.HReservationID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PaymentTypeID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@PaymentTypeID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PaymentTypeID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@VisitID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@VisitID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.VisitID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@ReferenceID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@ReferenceID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.ReferenceID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@CompanyID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@CompanyID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.CompanyID;
                     cmd.Parameters.Add(param);
@@ -1158,64 +1159,64 @@ namespace Finabit_API.Models
                     if (cls.PDAInsDate == DateTime.MinValue)
                         cls.PDAInsDate = DateTime.Now;
 
-                    param = new SqlParameter("@PDAInsDate", System.Data.SqlDbType.DateTime);
+                    param = new SqlParameter("@PDAInsDate", SqlDbType.DateTime);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PDAInsDate;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@IsNoCustom", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@IsNoCustom", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.IsNoCustom;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@IncludeTransport", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@IncludeTransport", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.IncludeTransport;
                     cmd.Parameters.Add(param);
 
 
-                    param = new SqlParameter("@HostName", System.Data.SqlDbType.VarChar);
+                    param = new SqlParameter("@HostName", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Memo; // perkohesisht luan rolin e HostName
                     cmd.Parameters.Add(param);
 
 
-                    param = new SqlParameter("@Longitude", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@Longitude", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Longitude;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@Latitude", System.Data.SqlDbType.Decimal);
+                    param = new SqlParameter("@Latitude", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Latitude;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@ServiceType", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@ServiceType", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.ServiceType;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@AssetID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@AssetID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.AssetID;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@BL", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@BL", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.BL;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@IsPriceFromPartner", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@IsPriceFromPartner", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.IsPriceFromPartner;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@PayValueWithForce", System.Data.SqlDbType.Bit);
+                    param = new SqlParameter("@PayValueWithForce", SqlDbType.Bit);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.PayValueWithForce;
                     cmd.Parameters.Add(param);
 
-                    param = new SqlParameter("@CardID", System.Data.SqlDbType.Int);
+                    param = new SqlParameter("@CardID", SqlDbType.Int);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.CardID;
                     cmd.Parameters.Add(param);
@@ -1255,7 +1256,7 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@ID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@ID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.ID;
                 cmd.Parameters.Add(param);
@@ -1371,22 +1372,22 @@ namespace Finabit_API.Models
                 cmd.CommandTimeout = 0;
 
                 SqlParameter param;
-                param = new SqlParameter("@Account", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@Account", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = CashAccount;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@Date", System.Data.SqlDbType.SmallDateTime);
+                param = new SqlParameter("@Date", SqlDbType.SmallDateTime);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Date;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@TypeID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@TypeID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = TypeID;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@CompanyID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@CompanyID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = CompanyID;
                 cmd.Parameters.Add(param);
@@ -1564,12 +1565,12 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@FromDate", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@FromDate", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = FromDate;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@ToDate", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@ToDate", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = ToDate;
                 cmd.Parameters.Add(param);
@@ -1708,7 +1709,7 @@ namespace Finabit_API.Models
                 SqlParameter param;
 
 
-                param = new SqlParameter("@DepartmentID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = DepartmentID;
                 cmd.Parameters.Add(param);
@@ -1762,7 +1763,7 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@ItemID", System.Data.SqlDbType.NVarChar);
+                param = new SqlParameter("@ItemID", SqlDbType.NVarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = ItemID;
                 cmd.Parameters.Add(param);
@@ -1869,17 +1870,17 @@ namespace Finabit_API.Models
 
                 SqlParameter param;
 
-                param = new SqlParameter("@FromDate", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@FromDate", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = FromDate;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@ToDate", System.Data.SqlDbType.VarChar);
+                param = new SqlParameter("@ToDate", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = ToDate;
                 cmd.Parameters.Add(param);
 
-                param = new SqlParameter("@TranTypeID", System.Data.SqlDbType.Int);
+                param = new SqlParameter("@TranTypeID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = Type;
                 cmd.Parameters.Add(param);

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Web;
 
-namespace AutoBit_WebInvoices.Models
+namespace FinabitAPI.Utilis
 {
     public class CommonApp
     {
@@ -25,7 +25,7 @@ namespace AutoBit_WebInvoices.Models
                 string Path ="C:\\Temp" + "\\Fina_errorLog_api";
                 if (!Directory.Exists(Path))
                 {
-                    System.IO.Directory.CreateDirectory(Path);
+                    Directory.CreateDirectory(Path);
                 }
 
                 FileInfo f1 = new FileInfo(Path + @"\Log_" + DateTime.Now.ToString("dd.MM.yyyy ") + "_" + ".txt");
@@ -37,7 +37,7 @@ namespace AutoBit_WebInvoices.Models
 
 
 
-                System.IO.File.AppendAllText(Path + @"\Log_" + DateTime.Now.ToString("dd.MM.yyyy ") + "_" + ".txt", log + "*****" + DateTime.Now + Environment.NewLine);
+                File.AppendAllText(Path + @"\Log_" + DateTime.Now.ToString("dd.MM.yyyy ") + "_" + ".txt", log + "*****" + DateTime.Now + Environment.NewLine);
             }
             //    string path = FINA.Properties.Settings.Default.FiscalPrinterPath;
             //    if (!Directory.Exists(path + "\\Finabit_ErrorLogs"))

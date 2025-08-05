@@ -3,9 +3,9 @@
 //-- Create date: 05.05.09 6:18:42 PM
 //-- Description:	CRUD for Table tblTransactions
 //-- =============================================
-using Finabit_API.Models;
 using System.Data;
 using Microsoft.Data.SqlClient;
+using FinabitAPI.Utilis;
 
 namespace Finabit_API.Models
 {

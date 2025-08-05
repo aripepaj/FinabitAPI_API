@@ -1,6 +1,6 @@
-﻿using Finabit_API.Models;
-using System.Data;
+﻿using System.Data;
 using Microsoft.Data.SqlClient;
+using FinabitAPI.Utilis;
 
 
 namespace AutoBit_WebInvoices.Models

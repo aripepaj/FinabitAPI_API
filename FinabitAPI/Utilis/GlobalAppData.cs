@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Web;
 
-namespace Finabit_API.Models
+namespace FinabitAPI.Utilis
 {
     public class GlobalAppData
     { 
