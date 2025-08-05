@@ -1,0 +1,6 @@
+@FinabitAPI_HostAddress = http://localhost:5121
+
+GET {{FinabitAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
