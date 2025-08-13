@@ -1,12 +1,26 @@
 using AutoBit_WebInvoices.Models;
 using Finabit_API.Models;
 using FinabitAPI.Utilis;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;          // +++
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Net.Mime;                 
+using Microsoft.Extensions.Hosting.WindowsServices;// +++
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseWindowsService();
+
+var sidecarPath = Path.Combine(AppContext.BaseDirectory, "instance.settings.json");
+if (File.Exists(sidecarPath))
+{
+    builder.Configuration.AddJsonFile(sidecarPath, optional: true, reloadOnChange: false); 
+}
+
+builder.Configuration.AddEnvironmentVariables();              
 
 GlobalRepository.Initialize(builder.Configuration);
 
@@ -15,51 +29,12 @@ builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 
-var jwtConfig = builder.Configuration.GetSection("Jwt");
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtConfig["Issuer"],
-        ValidAudience = jwtConfig["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Key"]))
-    };
-    options.Events = new JwtBearerEvents
-    {
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine("JWT ERROR: " + context.Exception.ToString());
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = context =>
-        {
-            Console.WriteLine("JWT OK: " + context.SecurityToken.ToString());
-            return Task.CompletedTask;
-        },
-        OnMessageReceived = context =>
-        {
-            Console.WriteLine("JWT: OnMessageReceived fired.");
-            return Task.CompletedTask;
-        }
-    };
-});
+builder.Services.AddControllers();
 
+builder.Services.AddAuthentication("BasicAuthentication")
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
-// Secure all endpoints by default
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter());
-});
-
+// Swagger (unchanged)
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Finabit API", Version = "v1" });
@@ -87,6 +62,8 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddHealthChecks();                          
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -94,8 +71,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
+app.MapHealthChecks("/health", new HealthCheckOptions           
+{
+    ResponseWriter = async (ctx, _) =>
+    {
+        ctx.Response.ContentType = MediaTypeNames.Application.Json;
+        await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
+    }
+});
+
 app.Run();

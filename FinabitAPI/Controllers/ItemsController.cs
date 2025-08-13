@@ -1,6 +1,9 @@
 ﻿using AutoBit_WebInvoices.Models;
 using Finabit_API.Models;
+using FinabitAPI.Models;
+using FinabitAPI.Repository;
 using FinabitAPI.Utilis;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -10,6 +13,7 @@ using System.Net;
 
 namespace FinabitAPI.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ItemsController : ControllerBase
@@ -17,11 +21,12 @@ namespace FinabitAPI.Controllers
 
         private readonly IConfiguration _configuration;
         private readonly DBAccess _dbAccess;
-
+       // private ItemRepository _itemRepository;
         public ItemsController(IConfiguration configuration, DBAccess dbAccess)
         {
             _configuration = configuration;
             _dbAccess = dbAccess;
+          
         }
 
         [HttpGet("LoadItems")]
@@ -848,5 +853,14 @@ namespace FinabitAPI.Controllers
                 Items = results
             };
         }
+
+
+        [HttpGet("GetGjirafa")]
+        public ActionResult<List<ItemsGjirafa>> Get_Gjirafa()
+        {
+          
+            return ItemRepository.SelectAllGjirafa();
+        }
+
     }
 }
