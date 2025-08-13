@@ -2,15 +2,20 @@ name: release-api
 
 on:
   push:
-    tags: ['v*.*.*']   # push a tag like v1.0.0 to trigger
+    tags: ['v*.*.*']   # e.g., v1.0.1
+
+permissions:
+  contents: write      # allow creating a Release
 
 jobs:
   build-release:
     runs-on: windows-latest
     env:
-      PROJECT: FinabitAPI/FinabitAPI.csproj   # <-- adjust if your .csproj path differs
+      PROJECT: FinabitAPI/FinabitAPI.csproj   # <-- your .csproj path
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -19,9 +24,14 @@ jobs:
         shell: pwsh
         run: echo "VERSION=$($env:GITHUB_REF_NAME.TrimStart('v'))" >> $env:GITHUB_ENV
 
-      - run: dotnet restore $env:PROJECT
-      - run: dotnet build $env:PROJECT -c Release --no-restore
-      - run: dotnet publish $env:PROJECT -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true --no-build
+      - name: Restore
+        run: dotnet restore $env:PROJECT
+
+      - name: Build
+        run: dotnet build $env:PROJECT -c Release --no-restore
+
+      - name: Publish (self-contained single file)
+        run: dotnet publish $env:PROJECT -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true --no-build
 
       - name: Zip + SHA256
         shell: pwsh
@@ -34,7 +44,8 @@ jobs:
           (Get-FileHash $zip -Algorithm SHA256).Hash | Set-Content "$zip.sha256"
           echo "ZIP=$zip" >> $env:GITHUB_ENV
 
-      - uses: softprops/action-gh-release@v2
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Finabit API ${{ env.VERSION }}
