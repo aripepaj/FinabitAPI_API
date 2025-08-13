@@ -1,0 +1,43 @@
+name: release-api
+
+on:
+  push:
+    tags: ['v*.*.*']   # push a tag like v1.0.0 to trigger
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    env:
+      PROJECT: FinabitAPI/FinabitAPI.csproj   # <-- adjust if your .csproj path differs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Version from tag
+        shell: pwsh
+        run: echo "VERSION=$($env:GITHUB_REF_NAME.TrimStart('v'))" >> $env:GITHUB_ENV
+
+      - run: dotnet restore $env:PROJECT
+      - run: dotnet build $env:PROJECT -c Release --no-restore
+      - run: dotnet publish $env:PROJECT -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true --no-build
+
+      - name: Zip + SHA256
+        shell: pwsh
+        run: |
+          $pub = Get-ChildItem -Recurse -Directory -Filter publish |
+                 Where-Object FullName -like "*\bin\Release\net8.0\win-x64\publish" |
+                 Select-Object -First 1 -ExpandProperty FullName
+          $zip = "FinabitApi_$env:VERSION`_win-x64.zip"
+          Compress-Archive -Path "$pub\*" -DestinationPath $zip -Force
+          (Get-FileHash $zip -Algorithm SHA256).Hash | Set-Content "$zip.sha256"
+          echo "ZIP=$zip" >> $env:GITHUB_ENV
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Finabit API ${{ env.VERSION }}
+          files: |
+            ${{ env.ZIP }}
+            ${{ env.ZIP }}.sha256
