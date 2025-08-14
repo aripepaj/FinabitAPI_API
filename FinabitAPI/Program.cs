@@ -1,13 +1,14 @@
-using AutoBit_WebInvoices.Models;
+﻿using AutoBit_WebInvoices.Models;
 using Finabit_API.Models;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;          // +++
+using Microsoft.Extensions.Hosting.WindowsServices;// +++
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Net.Mime;                 
-using Microsoft.Extensions.Hosting.WindowsServices;// +++
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,31 +32,39 @@ builder.Services.AddScoped<DepartmentRepository>();
 
 builder.Services.AddControllers();
 
-builder.Services.AddAuthentication("BasicAuthentication")
+// ✅ Authentication: ONLY Basic
+builder.Services
+    .AddAuthentication("BasicAuthentication")
     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes("BasicAuthentication")
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 // Swagger (unchanged)
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Finabit API", Version = "v1" });
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+
+    options.AddSecurityDefinition("basic", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
-        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "basic",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Name = "Authorization",
+        Description = "Basic auth. Enter your username and password."
     });
+
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basic" }
             },
             Array.Empty<string>()
         }
