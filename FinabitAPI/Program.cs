@@ -96,4 +96,10 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 })
 .AllowAnonymous();
 
+app.MapGet("/dbping", async (DBAccess db) =>
+{
+    try { await db.TestOpenAsync(); return Results.Ok("DB OK"); }
+    catch (Exception ex) { return Results.Problem("DB ERROR: " + ex.Message); }
+}).AllowAnonymous();
+
 app.Run();

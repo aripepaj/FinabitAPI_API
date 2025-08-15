@@ -22,6 +22,15 @@ namespace FinabitAPI.Utilis
             return new SqlConnection(_connectionString);
         }
 
+        public async Task TestOpenAsync(CancellationToken ct = default)
+        {
+            var sb = new SqlConnectionStringBuilder(_connectionString) { ConnectTimeout = 5 };
+            await using var cn = new SqlConnection(sb.ConnectionString);
+            await cn.OpenAsync(ct);
+            await using var cmd = new SqlCommand("SELECT 1;", cn);
+            _ = await cmd.ExecuteScalarAsync(ct);
+        }
+
         #region ItemStateList
         public List<XMLItems> M_GetItemsStateList(int DepartmentID)
         {
