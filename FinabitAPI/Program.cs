@@ -93,6 +93,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         ctx.Response.ContentType = MediaTypeNames.Application.Json;
         await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
     }
-});
+})
+.AllowAnonymous();
 
 app.Run();
