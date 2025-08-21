@@ -22,6 +22,26 @@ namespace FinabitAPI.Utilis
             return new SqlConnection(_connectionString);
         }
 
+        private const int DefaultCommandTimeoutSeconds = 30;
+
+        private async Task<SqlConnection> OpenWithRetryAsync(CancellationToken ct)
+        {
+            var cn = new SqlConnection(_connectionString);
+            int[] delaysMs = { 100, 200, 400 };
+            for (int i = 0; ; i++)
+            {
+                try
+                {
+                    await cn.OpenAsync(ct);
+                    return cn;
+                }
+                catch when (i < delaysMs.Length)
+                {
+                    await Task.Delay(delaysMs[i], ct);
+                }
+            }
+        }
+
         public async Task TestOpenAsync(CancellationToken ct = default)
         {
             var sb = new SqlConnectionStringBuilder(_connectionString) { ConnectTimeout = 5 };
@@ -1866,83 +1886,50 @@ namespace FinabitAPI.Utilis
             return clsList;
         }
 
-        public List<Orders> GetTransactions(string FromDate, string ToDate, int Type, string ItemID = null, string ItemName = null, string PartnerName = null)
+        public async Task<List<Orders>> GetTransactions(
+     string fromDate, string toDate, int type,
+     string itemID = null, string itemName = null, string partnerName = null,
+     CancellationToken ct = default)
         {
-            List<Orders> clsList = new List<Orders>();
+            var list = new List<Orders>();
 
-            using (SqlConnection cnn = GetConnection())
+            await using var cnn = await OpenWithRetryAsync(ct);
+            await using var cmd = new SqlCommand("spTransactionsList_API", cnn)
             {
-                SqlCommand cmd = new SqlCommand("spTransactionsList_API", cnn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandTimeout = 0;
-                cnn.Open();
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
 
-                SqlParameter param;
+            cmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate });
+            cmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.VarChar) { Value = toDate });
+            cmd.Parameters.Add(new SqlParameter("@TranTypeID", SqlDbType.Int) { Value = type });
+            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
 
-                param = new SqlParameter("@FromDate", SqlDbType.VarChar);
-                param.Direction = ParameterDirection.Input;
-                param.Value = FromDate;
-                cmd.Parameters.Add(param);
-
-                param = new SqlParameter("@ToDate", SqlDbType.VarChar);
-                param.Direction = ParameterDirection.Input;
-                param.Value = ToDate;
-                cmd.Parameters.Add(param);
-
-                param = new SqlParameter("@TranTypeID", SqlDbType.Int);
-                param.Direction = ParameterDirection.Input;
-                param.Value = Type;
-                cmd.Parameters.Add(param);
-
-                // New parameters
-                param = new SqlParameter("@ItemID", SqlDbType.NVarChar, 200);
-                param.Direction = ParameterDirection.Input;
-                param.Value = string.IsNullOrEmpty(ItemID) ? "%" : ItemID;
-                cmd.Parameters.Add(param);
-
-                param = new SqlParameter("@ItemName", SqlDbType.NVarChar, 200);
-                param.Direction = ParameterDirection.Input;
-                param.Value = string.IsNullOrEmpty(ItemName) ? "%" : ItemName;
-                cmd.Parameters.Add(param);
-
-                param = new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200);
-                param.Direction = ParameterDirection.Input;
-                param.Value = string.IsNullOrEmpty(PartnerName) ? "%" : PartnerName;
-                cmd.Parameters.Add(param);
-
-                try
+            await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
+            while (await dr.ReadAsync(ct))
+            {
+                list.Add(new Orders
                 {
-                    SqlDataReader dr = cmd.ExecuteReader();
-                    if (dr.HasRows)
-                    {
-                        while (dr.Read())
-                        {
-                            Orders cls = new Orders();
-                            cls.ID = Convert.ToInt32(dr["ID"]);
-                            cls.Data = Convert.ToDateTime(dr["Data"]);
-                            cls.Numri = Convert.ToString(dr["Numri"]);
-                            cls.ID_Konsumatorit = Convert.ToInt32(dr["ID_Konsumatorit"]);
-                            cls.Konsumatori = Convert.ToString(dr["Konsumatori"]);
-                            cls.Komercialisti = Convert.ToString(dr["Komercialisti"]);
-                            cls.Statusi_Faturimit = Convert.ToString(dr["Statusi_Faturimit"]);
-                            cls.Shifra = Convert.ToString(dr["Shifra"]);
-                            cls.Emertimi = Convert.ToString(dr["Emertimi"]);
-                            cls.Njesia_Artik = Convert.ToString(dr["Njesia_Artik"]);
-                            cls.Sasia = Convert.ToDecimal(dr["Sasia"]);
-                            cls.Cmimi = Convert.ToDecimal(dr["Cmimi"]);
-                            clsList.Add(cls);
-                        }
-                    }
-                    cnn.Close();
-                }
-                catch (Exception ex)
-                {
-                    string exp = ex.Message;
-                    cnn.Close();
-                }
+                    ID = Convert.ToInt32(dr["ID"]),
+                    Data = Convert.ToDateTime(dr["Data"]),
+                    Numri = Convert.ToString(dr["Numri"]),
+                    ID_Konsumatorit = Convert.ToInt32(dr["ID_Konsumatorit"]),
+                    Konsumatori = Convert.ToString(dr["Konsumatori"]),
+                    Komercialisti = Convert.ToString(dr["Komercialisti"]),
+                    Statusi_Faturimit = Convert.ToString(dr["Statusi_Faturimit"]),
+                    Shifra = Convert.ToString(dr["Shifra"]),
+                    Emertimi = Convert.ToString(dr["Emertimi"]),
+                    Njesia_Artik = Convert.ToString(dr["Njesia_Artik"]),
+                    Sasia = Convert.ToDecimal(dr["Sasia"]),
+                    Cmimi = Convert.ToDecimal(dr["Cmimi"])
+                });
             }
-            return clsList;
+
+            return list;
         }
+
 
     }
 }

@@ -986,15 +986,17 @@ namespace FinabitAPI.Controllers
 
 
         [HttpGet("TransactionsList")]
-        public ActionResult<List<Orders>> TransactionsList(
+        public async Task<ActionResult<List<Orders>>> TransactionsList(
             [FromQuery] string FromDate,
             [FromQuery] string ToDate,
             [FromQuery] int TransactionTypeID,
             [FromQuery] string ItemID = null,
             [FromQuery] string ItemName = null,
-            [FromQuery] string PartnerName = null)
+            [FromQuery] string PartnerName = null,
+            CancellationToken ct = default)      
         {
-            return GetTransactions(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName);
+            var rows = await GetTransactionsAsync(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName, ct);
+            return Ok(rows);
         }
 
         private void PayTransaction(decimal PaymentValue,int id)
@@ -2307,9 +2309,9 @@ namespace FinabitAPI.Controllers
         }
 
 
-        private List<Orders> GetTransactions(string FromDate, string ToDate, int TranTypeID, string ItemID = null, string ItemName = null, string PartnerName = null)
+        private Task<List<Orders>> GetTransactionsAsync(string fromDate, string toDate, int tranTypeID, string itemID = null, string itemName = null, string partnerName = null, CancellationToken ct = default)
         {
-            return _dbAccess.GetTransactions(FromDate, ToDate, TranTypeID, ItemID, ItemName, PartnerName);
+            return _dbAccess.GetTransactions(fromDate, toDate, tranTypeID, itemID, itemName, partnerName, ct);
         }
 
         private Transactions GetTransaction(XMLTransactions t)

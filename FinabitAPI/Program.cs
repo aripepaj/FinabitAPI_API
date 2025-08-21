@@ -25,7 +25,7 @@ builder.Configuration.AddEnvironmentVariables();
 
 GlobalRepository.Initialize(builder.Configuration);
 
-builder.Services.AddSingleton<DBAccess>();
+builder.Services.AddScoped<DBAccess>();
 builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
@@ -86,15 +86,14 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapHealthChecks("/health", new HealthCheckOptions           
+app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    ResponseWriter = async (ctx, _) =>
+    ResponseWriter = async (ctx, report) =>
     {
         ctx.Response.ContentType = MediaTypeNames.Application.Json;
         await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
     }
-})
-.AllowAnonymous();
+}).AllowAnonymous();
 
 app.MapGet("/dbping", async (DBAccess db) =>
 {
