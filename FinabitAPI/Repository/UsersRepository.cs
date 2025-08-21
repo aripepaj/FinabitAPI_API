@@ -7,69 +7,119 @@ namespace AutoBit_WebInvoices.Models
 {
     public class UsersRepository
     {
-
         public Users GetLoginUser(string UserName, string Password)
         {
-            Users cls = new Users();
-            SqlConnection cnn = GlobalRepository.GetConnection();
-            SqlCommand cmd = new SqlCommand("spGetLoginUser", cnn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            SqlParameter param;
-            try
+            var cls = new Users();
+
+            using (var cnn = GlobalRepository.GetConnection())
+            using (var cmd = new SqlCommand("spGetLoginUser", cnn)
             {
-                param = new SqlParameter("@UserName", System.Data.SqlDbType.VarChar);
-                param.Direction = ParameterDirection.Input;
-                param.Value = UserName;
-                cmd.Parameters.Add(param);
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 30
+            })
+            {
+                cmd.Parameters.Add(new SqlParameter("@UserName", SqlDbType.VarChar, 256) { Value = UserName });
 
-                param = new SqlParameter("@Password", System.Data.SqlDbType.NVarChar);
-                param.Direction = ParameterDirection.Input;
                 string strPassword = GlobalAppData.EncryptDES(Password);
-                param.Value = strPassword;
-                cmd.Parameters.Add(param);
+                cmd.Parameters.Add(new SqlParameter("@Password", SqlDbType.NVarChar, 512) { Value = strPassword });
 
-                param = new SqlParameter("@WindowsUser", System.Data.SqlDbType.VarChar);
-                param.Direction = ParameterDirection.Input;
-                param.Value = Environment.UserName;
-                cmd.Parameters.Add(param);
+                cmd.Parameters.Add(new SqlParameter("@WindowsUser", SqlDbType.VarChar, 256) { Value = Environment.UserName });
 
-
-                cls.HasConnections = true;
-                cnn.Open();
-
-                SqlDataReader dr = cmd.ExecuteReader();
-
-                if (dr.HasRows)
+                try
                 {
-                    while (dr.Read())
+                    cls.HasConnections = true;
+                    cnn.Open();
+
+                    using (var dr = cmd.ExecuteReader(CommandBehavior.SingleRow))
                     {
-                        cls.ID = Convert.ToInt32(dr["UserID"]);
-                        //cls.Employee.ID = Convert.ToInt32(dr["EmpID"]);
-                        // cls.Employee.FirstName = Convert.ToString(dr["FirstName"]);
-                        cls.UserName = Convert.ToString(dr["Username"]);
-                        cls.ExpireDate = Convert.ToDateTime(dr["ExpireDate"]);
-                        cls.Status = Convert.ToBoolean(dr["Status"]);
-                        cls.DepartmentID = Convert.ToInt32(dr["DepartmentID"]);
-                        cls.DefaultPartnerID = Convert.ToInt32(dr["PosPartnerID"]);
-                        cls.DefaultPartnerName = Convert.ToString(dr["PosPartnerName"]);
-                        cls.RoleID = Convert.ToInt32(dr["RoleID"]);
-                        //IsDeleteWithAuthorization
-                        cls.IsDeleteWithAuthorization = Convert.ToBoolean(dr["IsDeleteWithAuthorization"]);
-                        cls.PartnerID = Convert.ToInt32(dr["PartnerID"]);
-                        cls.IsAuthoriser = Convert.ToBoolean(dr["IsAuthoriser"]);
-                        cls.DisableDateInDocuments = Convert.ToBoolean(dr["DisableDateInDocuments"]);
-                        break;
+                        if (dr.Read())
+                        {
+                            // helper local functions
+                            int Ord(params string[] names) => GetOrdinalSafe(dr, names);
+                            int GetInt(params string[] names) => GetIntSafe(dr, names);
+                            bool GetBool(params string[] names) => GetBoolSafe(dr, names);
+                            DateTime GetDate(params string[] names) => GetDateTimeSafe(dr, names);
+                            string? GetStrN(params string[] names) => GetStringOrNullSafe(dr, names);
+                            string GetStr(params string[] names) => GetStringSafe(dr, names);
+
+                            cls.ID = GetInt("UserID", "UserId");
+                            // Username may not be returned by the proc; fall back to input
+                            int userNameOrd = Ord("Username", "UserName");
+                            cls.UserName = userNameOrd >= 0 && !dr.IsDBNull(userNameOrd)
+                                                            ? dr.GetString(userNameOrd)
+                                                            : UserName;
+
+                            cls.ExpireDate = GetDate("ExpireDate");
+                            cls.Status = GetBool("Status", "IsActive");
+                            cls.DepartmentID = GetInt("DepartmentID", "DepartmentId"); // e.DepartmentID can be NULL
+                            cls.DefaultPartnerID = GetInt("PosPartnerID", "POSPartnerID", "DefaultPartnerID", "DefaultPartnerId");
+                            cls.DefaultPartnerName = GetStrN("PosPartnerName", "POSPartnerName", "DefaultPartnerName");
+                            cls.RoleID = GetInt("RoleID", "RoleId");
+                            cls.IsDeleteWithAuthorization = GetBool("IsDeleteWithAuthorization");
+                            cls.PartnerID = GetInt("PartnerID", "PartnerId");
+                            cls.IsAuthoriser = GetBool("IsAuthoriser", "IsAuthorizer");
+                            cls.DisableDateInDocuments = GetBool("DisableDateInDocuments");
+                        }
                     }
                 }
-                cnn.Close();
+                catch
+                {
+                    cls.HasConnections = false;
+                    throw; // let your controller/middleware surface a proper 4xx/5xx
+                }
             }
-            catch (Exception ex)
-            {
-                cls.HasConnections = false;
-                string exp = ex.Message;
-                cnn.Close();
-            }
+
             return cls;
+        }
+
+        // ---------- safe readers (no logic change, just robustness) ----------
+        private static int GetOrdinalSafe(SqlDataReader r, params string[] names)
+        {
+            foreach (var n in names)
+            {
+                try { return r.GetOrdinal(n); }
+                catch (IndexOutOfRangeException) { /* try next */ }
+            }
+            return -1; // not found
+        }
+
+        private static string? GetStringOrNullSafe(SqlDataReader r, params string[] names)
+        {
+            int ord = GetOrdinalSafe(r, names);
+            if (ord < 0 || r.IsDBNull(ord)) return null;
+            return r.GetString(ord);
+        }
+
+        private static string GetStringSafe(SqlDataReader r, params string[] names)
+        {
+            int ord = GetOrdinalSafe(r, names);
+            if (ord < 0 || r.IsDBNull(ord)) return string.Empty;
+            return r.GetString(ord);
+        }
+
+        private static int GetIntSafe(SqlDataReader r, params string[] names)
+        {
+            int ord = GetOrdinalSafe(r, names);
+            if (ord < 0 || r.IsDBNull(ord)) return 0;
+            // handles underlying SQL types convertible to int
+            return Convert.ToInt32(r.GetValue(ord));
+        }
+
+        private static bool GetBoolSafe(SqlDataReader r, params string[] names)
+        {
+            int ord = GetOrdinalSafe(r, names);
+            if (ord < 0 || r.IsDBNull(ord)) return false;
+            var v = r.GetValue(ord);
+            if (v is bool b) return b;
+            return Convert.ToInt32(v) != 0; // bit(1) → bool
+        }
+
+        private static DateTime GetDateTimeSafe(SqlDataReader r, params string[] names)
+        {
+            int ord = GetOrdinalSafe(r, names);
+            if (ord < 0 || r.IsDBNull(ord)) return DateTime.MinValue;
+            var v = r.GetValue(ord);
+            return (v is DateTime dt) ? dt : Convert.ToDateTime(v);
         }
     }
 }
