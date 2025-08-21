@@ -26,6 +26,7 @@ builder.Configuration.AddEnvironmentVariables();
 GlobalRepository.Initialize(builder.Configuration);
 
 builder.Services.AddSingleton<DBAccess>();
+builder.Services.AddHostedService<DatabaseBootstrapper>();
 builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
