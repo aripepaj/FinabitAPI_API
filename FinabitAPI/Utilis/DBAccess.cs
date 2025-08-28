@@ -18,14 +18,26 @@ namespace FinabitAPI.Utilis
         private string GetConnectionString()
         {
             var t = _tenant.Current;
+
             if (!string.IsNullOrWhiteSpace(t.ConnectionString))
-                return t.ConnectionString!;
+            {
+                var b = new SqlConnectionStringBuilder(t.ConnectionString);
+                if (!b.DataSource.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase))
+                    b.DataSource = "tcp:" + b.DataSource;      
+                b.Encrypt = true;
+                b.TrustServerCertificate = true;
+                b.PersistSecurityInfo = true;
+                if (string.IsNullOrWhiteSpace(b.UserID)) { b.UserID = "Fina"; b.Password = "Fina-10"; }
+                return b.ConnectionString;
+            }
+
             var sb = new SqlConnectionStringBuilder
             {
                 DataSource = t.Server,
                 InitialCatalog = t.Database,
                 UserID = "Fina",
                 Password = "Fina-10",
+                Encrypt = true,
                 TrustServerCertificate = true,
                 PersistSecurityInfo = true
             };
