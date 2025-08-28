@@ -97,6 +97,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Pipeline"] = "TenantFirst";
+    await next();
+});
+
 app.UseMiddleware<TenantResolutionMiddleware>();
 
 app.UseCors("OpenAll");
@@ -125,5 +131,24 @@ app.MapGet("/dbping", async (DBAccess db) =>
     try { await db.TestOpenAsync(); return Results.Ok("DB OK"); }
     catch (Exception ex) { return Results.Problem("DB ERROR: " + ex.Message); }
 }).AllowAnonymous();
+
+// shows which tenant this request resolved to
+app.MapGet("/whoami", (ITenantAccessor ta) =>
+{
+    var t = ta.Current;
+    if (t is null) return Results.Problem("No tenant resolved");
+    return Results.Ok(new
+    {
+        t.Id,
+        t.Server,
+        t.Database,
+        HasConnStr = !string.IsNullOrWhiteSpace(t.ConnectionString)
+    });
+}).AllowAnonymous();
+
+// shows effective config with provider precedence (helps catch overrides)
+app.MapGet("/config-debug", (IConfiguration cfg) => Results.Text(cfg.GetDebugView()))
+   .AllowAnonymous();
+
 
 app.Run();
