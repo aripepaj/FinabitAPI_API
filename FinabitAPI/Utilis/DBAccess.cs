@@ -1,50 +1,55 @@
 ﻿using AutoBit_WebInvoices.Models;
+using Finabit_API.Models;
+using FinabitAPI.Multitenancy;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Finabit_API.Models;
 
 namespace FinabitAPI.Utilis
 {
     public class DBAccess
     {
-        private readonly string _connectionString;
+        private readonly ITenantAccessor _tenant;
 
-        public DBAccess(IConfiguration configuration)
+        public DBAccess(ITenantAccessor tenant) => _tenant = tenant;
+
+        private string GetConnectionString()
         {
-            _connectionString = configuration.GetConnectionString("strCnn");
+            var t = _tenant.Current;
+            if (!string.IsNullOrWhiteSpace(t.ConnectionString))
+                return t.ConnectionString!;
+            var sb = new SqlConnectionStringBuilder
+            {
+                DataSource = t.Server,
+                InitialCatalog = t.Database,
+                UserID = "Fina",
+                Password = "Fina-10",
+                TrustServerCertificate = true,
+                PersistSecurityInfo = true
+            };
+            return sb.ConnectionString;
         }
 
-        public SqlConnection GetConnection()
-        {
-            return new SqlConnection(_connectionString);
-        }
+        public SqlConnection GetConnection() => new SqlConnection(GetConnectionString());
 
         private const int DefaultCommandTimeoutSeconds = 30;
 
         private async Task<SqlConnection> OpenWithRetryAsync(CancellationToken ct)
         {
-            var cn = new SqlConnection(_connectionString);
+            var cn = new SqlConnection(GetConnectionString());
             int[] delaysMs = { 100, 200, 400 };
             for (int i = 0; ; i++)
             {
-                try
-                {
-                    await cn.OpenAsync(ct);
-                    return cn;
-                }
-                catch when (i < delaysMs.Length)
-                {
-                    await Task.Delay(delaysMs[i], ct);
-                }
+                try { await cn.OpenAsync(ct); return cn; }
+                catch when (i < delaysMs.Length) { await Task.Delay(delaysMs[i], ct); }
             }
         }
 
         public async Task TestOpenAsync(CancellationToken ct = default)
         {
-            var sb = new SqlConnectionStringBuilder(_connectionString) { ConnectTimeout = 5 };
+            var sb = new SqlConnectionStringBuilder(GetConnectionString()) { ConnectTimeout = 5 };
             await using var cn = new SqlConnection(sb.ConnectionString);
             await cn.OpenAsync(ct);
             await using var cmd = new SqlCommand("SELECT 1;", cn);

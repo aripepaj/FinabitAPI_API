@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
 using System.Text.RegularExpressions;
@@ -7,12 +8,12 @@ using FinabitAPI.Utilis;
 public sealed class DatabaseBootstrapper : IHostedService
 {
     private readonly ILogger<DatabaseBootstrapper> _log;
-    private readonly DBAccess _db;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public DatabaseBootstrapper(ILogger<DatabaseBootstrapper> log, DBAccess db)
+    public DatabaseBootstrapper(ILogger<DatabaseBootstrapper> log, IServiceScopeFactory scopeFactory)
     {
         _log = log;
-        _db = db;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task StartAsync(CancellationToken ct)
@@ -33,7 +34,10 @@ public sealed class DatabaseBootstrapper : IHostedService
             return;
         }
 
-        await using var cn = _db.GetConnection();
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DBAccess>();
+
+        await using var cn = db.GetConnection();   // uses default tenant (no HttpContext)
         await cn.OpenAsync(ct);
 
         foreach (var path in scripts)
@@ -47,6 +51,8 @@ public sealed class DatabaseBootstrapper : IHostedService
             }
             _log.LogInformation("Executed SQL bootstrap: {File}", Path.GetFileName(path));
         }
+
+        _log.LogInformation("SQL bootstrap completed.");
     }
 
     public Task StopAsync(CancellationToken ct) => Task.CompletedTask;

@@ -1,31 +1,24 @@
 ﻿using AutoBit_WebInvoices.Models;
-using Finabit_API.Models;
+using FinabitAPI.Multitenancy;
 using FinabitAPI.Utilis;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;          // +++
-using Microsoft.Extensions.Hosting.WindowsServices;// +++
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
-using System.Net.Mime;                 
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseWindowsService();
 
-var sidecarPath = Path.Combine(AppContext.BaseDirectory, "instance.settings.json");
-if (File.Exists(sidecarPath))
-{
-    builder.Configuration.AddJsonFile(sidecarPath, optional: true, reloadOnChange: false); 
-}
+builder.Configuration
+    .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
-builder.Configuration.AddEnvironmentVariables();              
-
-GlobalRepository.Initialize(builder.Configuration);
-
-builder.Services.AddSingleton<DBAccess>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ITenantStore, MutableFileTenantStore>();
+builder.Services.AddScoped<ITenantAccessor, HttpContextTenantAccessor>();
+builder.Services.AddScoped<DBAccess>();
 builder.Services.AddHostedService<DatabaseBootstrapper>();
 builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
@@ -33,21 +26,27 @@ builder.Services.AddScoped<DepartmentRepository>();
 
 builder.Services.AddControllers();
 
-// ✅ Authentication: ONLY Basic
-builder.Services
-    .AddAuthentication("BasicAuthentication")
-    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendCors", policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+});
 
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = "Basic";
+        options.DefaultChallengeScheme = "Basic";
+    })
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", null);
 
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .AddAuthenticationSchemes("BasicAuthentication")
         .RequireAuthenticatedUser()
         .Build();
 });
 
-// Swagger (unchanged)
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Finabit API", Version = "v1" });
@@ -60,29 +59,38 @@ builder.Services.AddSwaggerGen(options =>
         Name = "Authorization",
         Description = "Basic auth. Enter your username and password."
     });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        { new OpenApiSecurityScheme {
+            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basic" }
+        }, Array.Empty<string>() }
+    });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityDefinition("tenant", new OpenApiSecurityScheme
     {
-        {
-            new OpenApiSecurityScheme {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basic" }
-            },
-            Array.Empty<string>()
-        }
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "X-Tenant-Id",
+        Description = "Tenant identifier (optional; falls back to default). You can also use ?tenant= in query."
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        { new OpenApiSecurityScheme {
+            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "tenant" }
+        }, Array.Empty<string>() }
     });
 });
 
-builder.Services.AddHealthChecks();                          
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.UseMiddleware<TenantResolutionMiddleware>();
+
 app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Finabit API v1");
-});
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Finabit API v1"));
 
 app.MapGet("/", () => Results.Redirect("/swagger")).AllowAnonymous();
+
+app.UseCors("FrontendCors");
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -93,7 +101,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = async (ctx, report) =>
     {
-        ctx.Response.ContentType = MediaTypeNames.Application.Json;
+        ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
         await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
     }
 }).AllowAnonymous();

@@ -6,9 +6,9 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Threading.Tasks;
 
-public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+public sealed class BasicAuthenticationHandler
+    : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     private readonly UsersRepository _userRepository;
 
@@ -26,31 +26,47 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.ContainsKey("Authorization"))
-            return AuthenticateResult.Fail("Missing Authorization Header");
+            return AuthenticateResult.NoResult();
 
-        string username;
-        string password;
+        string username, password;
+
         try
         {
             var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
-            var credentialBytes = Convert.FromBase64String(authHeader.Parameter ?? "");
-            var credentials = Encoding.UTF8.GetString(credentialBytes).Split(':', 2);
-            username = credentials[0];
-            password = credentials[1];
+            if (!"Basic".Equals(authHeader.Scheme, StringComparison.OrdinalIgnoreCase))
+                return AuthenticateResult.NoResult();
+
+            var raw = authHeader.Parameter ?? string.Empty;
+            var credentialBytes = Convert.FromBase64String(raw);
+            var parts = Encoding.UTF8.GetString(credentialBytes).Split(':', 2);
+            if (parts.Length != 2) return AuthenticateResult.Fail("Invalid Basic header.");
+            username = parts[0];
+            password = parts[1];
         }
         catch
         {
-            return AuthenticateResult.Fail("Invalid Authorization Header");
+            return AuthenticateResult.Fail("Invalid Authorization header.");
         }
 
-        if (_userRepository.GetLoginUser(username, password).ID==0)
-            return AuthenticateResult.Fail("Invalid Username or Password");
+        var user = _userRepository.GetLoginUser(username, password);
+        if (user == null || user.ID == 0)
+            return AuthenticateResult.Fail("Invalid username or password.");
 
-        var claims = new[] { new Claim(ClaimTypes.Name, username) };
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, username),
+            new Claim(ClaimTypes.Name, username)
+        };
+
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
         return AuthenticateResult.Success(ticket);
+    }
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.Headers["WWW-Authenticate"] = "Basic realm=\"FinabitAPI\"";
+        return base.HandleChallengeAsync(properties);
     }
 }

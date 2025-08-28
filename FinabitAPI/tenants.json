@@ -1,0 +1,19 @@
+{
+  "DefaultId": "appsettings",
+  "Items": [
+    {
+      "Id": "appsettings",
+      "Name": "AppSettings Default",
+      "ConnectionString": "Data Source=192.168.199.30;Initial Catalog=FINA;Persist Security Info=True;User ID=Fina;Password=Fina-10;TrustServerCertificate=True",
+      "Server": null,
+      "Database": null
+    },
+    {
+      "Id": "devolli",
+      "Name": "devolli group",
+      "ConnectionString": "Data Source=192.168.199.30;Initial Catalog=FINA_ONLINE;Persist Security Info=True;User ID=Fina;Password=Fina-10;TrustServerCertificate=True",
+      "Server": "string",
+      "Database": "string"
+    }
+  ]
+}

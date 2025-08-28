@@ -7,11 +7,18 @@ namespace AutoBit_WebInvoices.Models
 {
     public class UsersRepository
     {
+        private readonly DBAccess _db;
+
+        public UsersRepository(DBAccess db) // <-- inject tenant-aware DBAccess
+        {
+            _db = db;
+        }
+
         public Users GetLoginUser(string UserName, string Password)
         {
             var cls = new Users();
 
-            using (var cnn = GlobalRepository.GetConnection())
+            using (var cnn = _db.GetConnection()) // <-- per-tenant connection
             using (var cmd = new SqlCommand("spGetLoginUser", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
@@ -43,15 +50,15 @@ namespace AutoBit_WebInvoices.Models
                             string GetStr(params string[] names) => GetStringSafe(dr, names);
 
                             cls.ID = GetInt("UserID", "UserId");
-                            // Username may not be returned by the proc; fall back to input
+
                             int userNameOrd = Ord("Username", "UserName");
                             cls.UserName = userNameOrd >= 0 && !dr.IsDBNull(userNameOrd)
-                                                            ? dr.GetString(userNameOrd)
-                                                            : UserName;
+                                ? dr.GetString(userNameOrd)
+                                : UserName;
 
                             cls.ExpireDate = GetDate("ExpireDate");
                             cls.Status = GetBool("Status", "IsActive");
-                            cls.DepartmentID = GetInt("DepartmentID", "DepartmentId"); // e.DepartmentID can be NULL
+                            cls.DepartmentID = GetInt("DepartmentID", "DepartmentId");
                             cls.DefaultPartnerID = GetInt("PosPartnerID", "POSPartnerID", "DefaultPartnerID", "DefaultPartnerId");
                             cls.DefaultPartnerName = GetStrN("PosPartnerName", "POSPartnerName", "DefaultPartnerName");
                             cls.RoleID = GetInt("RoleID", "RoleId");
@@ -65,22 +72,22 @@ namespace AutoBit_WebInvoices.Models
                 catch
                 {
                     cls.HasConnections = false;
-                    throw; // let your controller/middleware surface a proper 4xx/5xx
+                    throw; // bubble up to auth handler/controller
                 }
             }
 
             return cls;
         }
 
-        // ---------- safe readers (no logic change, just robustness) ----------
+        // ---------- safe readers ----------
         private static int GetOrdinalSafe(SqlDataReader r, params string[] names)
         {
             foreach (var n in names)
             {
                 try { return r.GetOrdinal(n); }
-                catch (IndexOutOfRangeException) { /* try next */ }
+                catch (IndexOutOfRangeException) { }
             }
-            return -1; // not found
+            return -1;
         }
 
         private static string? GetStringOrNullSafe(SqlDataReader r, params string[] names)
@@ -101,7 +108,6 @@ namespace AutoBit_WebInvoices.Models
         {
             int ord = GetOrdinalSafe(r, names);
             if (ord < 0 || r.IsDBNull(ord)) return 0;
-            // handles underlying SQL types convertible to int
             return Convert.ToInt32(r.GetValue(ord));
         }
 
@@ -111,7 +117,7 @@ namespace AutoBit_WebInvoices.Models
             if (ord < 0 || r.IsDBNull(ord)) return false;
             var v = r.GetValue(ord);
             if (v is bool b) return b;
-            return Convert.ToInt32(v) != 0; // bit(1) → bool
+            return Convert.ToInt32(v) != 0;
         }
 
         private static DateTime GetDateTimeSafe(SqlDataReader r, params string[] names)
