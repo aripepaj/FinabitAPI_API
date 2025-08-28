@@ -21,11 +21,11 @@ builder.Logging.AddEventLog();
 builder.Configuration.AddCommandLine(args);
 
 builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)  
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)   // base
+    .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: true) // overrides base
     .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
-    .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: false) 
     .AddEnvironmentVariables()
-    .AddCommandLine(args);
+    .AddCommandLine(args); // CLI still overrides everything
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ITenantStore, MutableFileTenantStore>();
