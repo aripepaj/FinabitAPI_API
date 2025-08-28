@@ -147,8 +147,13 @@ app.MapGet("/whoami", (ITenantAccessor ta) =>
 }).AllowAnonymous();
 
 // shows effective config with provider precedence (helps catch overrides)
-app.MapGet("/config-debug", (IConfiguration cfg) => Results.Text(cfg.GetDebugView()))
-   .AllowAnonymous();
+app.MapGet("/config-debug", (IConfiguration cfg) =>
+{
+    if (cfg is IConfigurationRoot root)
+        return Results.Text(root.GetDebugView());
+    return Results.Text("DebugView not available (cfg is not IConfigurationRoot).");
+}).AllowAnonymous();
+
 
 
 app.Run();
