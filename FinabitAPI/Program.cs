@@ -27,7 +27,6 @@ builder.Services.AddCors(o =>
 });
 
 builder.Logging.AddEventLog();
-builder.Configuration.AddCommandLine(args);
 
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)   // base
@@ -98,9 +97,9 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-app.UseCors("OpenAll");
-
 app.UseMiddleware<TenantResolutionMiddleware>();
+
+app.UseCors("OpenAll");
 
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Finabit API v1"));
