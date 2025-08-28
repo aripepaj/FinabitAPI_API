@@ -17,6 +17,15 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 
 builder.Host.UseWindowsService();
 
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("OpenAll", p => p
+        .SetIsOriginAllowed(_ => true) 
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials());          
+});
+
 builder.Logging.AddEventLog();
 builder.Configuration.AddCommandLine(args);
 
@@ -37,12 +46,6 @@ builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 
 builder.Services.AddControllers();
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FrontendCors", policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
-});
 
 builder.Services
     .AddAuthentication(options =>
@@ -95,14 +98,14 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.UseCors("AllowAll");
+
 app.UseMiddleware<TenantResolutionMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Finabit API v1"));
 
 app.MapGet("/", () => Results.Redirect("/swagger")).AllowAnonymous();
-
-app.UseCors("FrontendCors");
 
 app.UseAuthentication();
 app.UseAuthorization();
