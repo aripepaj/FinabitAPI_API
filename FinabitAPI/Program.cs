@@ -21,10 +21,11 @@ builder.Logging.AddEventLog();
 builder.Configuration.AddCommandLine(args);
 
 builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)  
     .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
-    .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: false)
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
+    .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: false) 
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ITenantStore, MutableFileTenantStore>();
