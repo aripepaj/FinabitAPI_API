@@ -18,6 +18,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 builder.Host.UseWindowsService();
 
 builder.Logging.AddEventLog();
+builder.Configuration.AddCommandLine(args);
 
 builder.Configuration
     .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
