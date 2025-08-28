@@ -98,7 +98,7 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-app.UseCors("AllowAll");
+app.UseCors("OpenAll");
 
 app.UseMiddleware<TenantResolutionMiddleware>();
 
