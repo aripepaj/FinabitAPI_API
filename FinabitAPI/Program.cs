@@ -1,13 +1,23 @@
-﻿using AutoBit_WebInvoices.Models;
-using FinabitAPI.Multitenancy;
-using FinabitAPI.Utilis;
+﻿using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using AutoBit_WebInvoices.Models;
+using FinabitAPI.Multitenancy;
+using FinabitAPI.Utilis;
 
-var builder = WebApplication.CreateBuilder(args);
+var baseDir = AppContext.BaseDirectory;        
+Directory.SetCurrentDirectory(baseDir);          
+
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    ContentRootPath = baseDir,                
+    Args = args
+});
 
 builder.Host.UseWindowsService();
+
+builder.Logging.AddEventLog();
 
 builder.Configuration
     .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
