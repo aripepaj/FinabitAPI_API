@@ -17,9 +17,9 @@ namespace FinabitAPI.Utilis
 
         private string GetConnectionString()
         {
-            var t = _tenant.Current;
-            if (!string.IsNullOrWhiteSpace(t.ConnectionString))
-                return t.ConnectionString!;
+            var t = _tenant.Current!;
+            if (!string.IsNullOrWhiteSpace(t.ConnectionString)) return t.ConnectionString!;
+
             var sb = new SqlConnectionStringBuilder
             {
                 DataSource = t.Server,
@@ -27,7 +27,10 @@ namespace FinabitAPI.Utilis
                 UserID = "Fina",
                 Password = "Fina-10",
                 TrustServerCertificate = true,
-                PersistSecurityInfo = true
+                PersistSecurityInfo = true,
+                ConnectTimeout = 60,                
+                Pooling = true,
+                MinPoolSize = 1
             };
             return sb.ConnectionString;
         }
