@@ -126,6 +126,15 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 }).AllowAnonymous();
 
+app.MapHealthChecks("/test", new HealthCheckOptions
+{
+    ResponseWriter = async (ctx, report) =>
+    {
+        ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
+        await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
+    }
+}).AllowAnonymous();
+
 app.MapGet("/dbping", async (DBAccess db) =>
 {
     try { await db.TestOpenAsync(); return Results.Ok("DB OK"); }
