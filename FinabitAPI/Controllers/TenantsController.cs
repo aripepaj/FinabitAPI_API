@@ -1,7 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
-using FinabitAPI.Multitenancy;
+﻿using FinabitAPI.Multitenancy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -74,18 +75,23 @@ public class TenantsController : ControllerBase
             return BadRequest("Server and Database are required.");
 
         var cs = BuildConnString(dto.Server, dto.Database);
+
+        var (okConn, err) = await TryOpenAsync(cs, timeoutSeconds: 5, ct);
+        if (!okConn) return BadRequest($"Failed to connect to the database with the provided server/database. {err}");
+
         var t = new Tenant
         {
             Id = dto.Id,
             Name = dto.Name,
             Server = dto.Server,
             Database = dto.Database,
-            ConnectionString = cs              // <- persist full CS to tenants.json
+            ConnectionString = cs              
         };
 
         var ok = await _store.AddOrUpdateAsync(t, dto.SetAsDefault, ct);
         return ok ? CreatedAtAction(nameof(GetById), new { id = t.Id }, Shape(t)) : Problem("Failed to save tenant.");
     }
+
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] UpsertTenantDto dto, CancellationToken ct)
@@ -95,6 +101,10 @@ public class TenantsController : ControllerBase
             return BadRequest("Server and Database are required.");
 
         var cs = BuildConnString(dto.Server, dto.Database);
+
+        var (okConn, err) = await TryOpenAsync(cs, timeoutSeconds: 5, ct);
+        if (!okConn) return BadRequest($"Failed to connect to the database with the provided server/database. {err}");
+
         var t = new Tenant
         {
             Id = id,
@@ -111,4 +121,32 @@ public class TenantsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id, CancellationToken ct)
         => (await _store.RemoveAsync(id, ct)) ? NoContent() : NotFound();
+
+    private static async Task<(bool ok, string? error)> TryOpenAsync(string connectionString, int timeoutSeconds, CancellationToken ct)
+    {
+        try
+        {
+            var sb = new SqlConnectionStringBuilder(connectionString)
+            {
+                ConnectTimeout = timeoutSeconds
+            };
+
+            await using var cn = new SqlConnection(sb.ConnectionString);
+            await cn.OpenAsync(ct);
+
+            await using var cmd = new SqlCommand("SELECT 1;", cn)
+            {
+                CommandType = CommandType.Text,
+                CommandTimeout = timeoutSeconds
+            };
+            _ = await cmd.ExecuteScalarAsync(ct);
+
+            return (true, null);
+        }
+        catch (Exception ex) when (ex is SqlException || ex is InvalidOperationException || ex is TimeoutException)
+        {
+            return (false, ex.Message);
+        }
+    }
+
 }
