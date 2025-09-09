@@ -141,20 +141,6 @@ app.MapGet("/dbping", async (DBAccess db) =>
     catch (Exception ex) { return Results.Problem("DB ERROR: " + ex.Message); }
 }).AllowAnonymous();
 
-// shows which tenant this request resolved to
-app.MapGet("/whoami", (ITenantAccessor ta) =>
-{
-    var t = ta.Current;
-    if (t is null) return Results.Problem("No tenant resolved");
-    return Results.Ok(new
-    {
-        t.Id,
-        t.Server,
-        t.Database,
-        HasConnStr = !string.IsNullOrWhiteSpace(t.ConnectionString)
-    });
-}).AllowAnonymous();
-
 // shows effective config with provider precedence (helps catch overrides)
 app.MapGet("/config-debug", (IConfiguration cfg) =>
 {
