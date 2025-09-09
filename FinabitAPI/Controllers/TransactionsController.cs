@@ -2,6 +2,7 @@
 
 using AutoBit_WebInvoices.Models;
 using Finabit_API.Models;
+using FinabitAPI.Models;
 using FinabitAPI.Service;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Mvc;
@@ -2512,6 +2513,36 @@ namespace FinabitAPI.Controllers
             //Users_GetLoginUserByPIN("_3");
 
             return cls;
+        }
+
+        private Task<List<TransactionAggregate>> GetTransactionsAggregateAsync(
+    string fromDate, string toDate, int tranTypeID,
+    string itemID = null, string itemName = null, string partnerName = null,
+    string departmentName = null,
+    CancellationToken ct = default)
+        {
+            return _dbAccess.GetTransactionsAggregate(
+                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName, ct);
+        }
+
+        [HttpGet("TransactionsAggregate")]
+        public async Task<IActionResult> GetAggregate(
+                [FromQuery] string fromDate,
+                [FromQuery] string toDate,
+                [FromQuery] int tranTypeID,
+                [FromQuery] string itemID = null,
+                [FromQuery] string itemName = null,
+                [FromQuery] string partnerName = null,
+                [FromQuery] string departmentName = null,
+                CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
+                return BadRequest("fromDate and toDate are required.");
+
+            var data = await GetTransactionsAggregateAsync(
+                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName, ct);
+
+            return Ok(data);
         }
 
         private List<ItemsLookup> ItemList;

@@ -90,8 +90,8 @@ BEGIN
       AND (@td IS NULL OR t.[TransactionDate] <= @td)
       AND t.TransactionTypeID = @TranTypeID
       AND td.ItemID      LIKE @ItemID
-      AND i.ItemName     LIKE @ItemName
-      AND p.PartnerName  LIKE @PartnerName
+      AND i.ItemName     LIKE '%' + @ItemName + '%'
+      AND p.PartnerName  LIKE '%' +@PartnerName + '%'
     ORDER BY t.ID DESC
     OPTION (RECOMPILE);
 END

@@ -1,5 +1,6 @@
 ﻿using AutoBit_WebInvoices.Models;
 using Finabit_API.Models;
+using FinabitAPI.Models;
 using FinabitAPI.Multitenancy;
 using Microsoft.Data.SqlClient;
 using System;
@@ -1938,6 +1939,41 @@ namespace FinabitAPI.Utilis
             return list;
         }
 
+        public async Task<List<TransactionAggregate>> GetTransactionsAggregate(
+     string fromDate, string toDate, int type,
+     string itemID = null, string itemName = null, string partnerName = null,
+     string departmentName = null,
+     CancellationToken ct = default)
+        {
+            var list = new List<TransactionAggregate>();
 
+            await using var cnn = await OpenWithRetryAsync(ct);
+            await using var cmd = new SqlCommand("spTransactionsListAggregate_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            cmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate });
+            cmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.VarChar) { Value = toDate });
+            cmd.Parameters.Add(new SqlParameter("@TranTypeID", SqlDbType.Int) { Value = type });
+            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = itemName ?? string.Empty });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName ?? string.Empty });
+            cmd.Parameters.Add(new SqlParameter("@DepartmentName", SqlDbType.NVarChar, 200) { Value = departmentName ?? string.Empty });
+
+            await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
+            while (await dr.ReadAsync(ct))
+            {
+                list.Add(new TransactionAggregate
+                {
+                    Data = Convert.ToDateTime(dr["Data"]),
+                    Value = Convert.ToDecimal(dr["Value"]),
+                    Rows = Convert.ToInt32(dr["rows"])
+                });
+            }
+
+            return list;
+        }
     }
 }
