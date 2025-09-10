@@ -8,14 +8,6 @@ IF OBJECT_ID(N'dbo.spTransactionsListAggregate_API', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.spTransactionsListAggregate_API AS RETURN;');
 GO
 
-USE [FINA_PRINCE]
-GO
-/****** Object:  StoredProcedure [dbo].[spTransactionsListAggregate_API]    Script Date: 09.09.25 4:08:53 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE [dbo].[spTransactionsListAggregate_API]
     @FromDate        varchar(100),
     @ToDate          varchar(100),
