@@ -2545,6 +2545,19 @@ namespace FinabitAPI.Controllers
             return Ok(data);
         }
 
+        [HttpGet("IncomeStatement")]
+        public async Task<IActionResult> GetIncomeStatement(
+    [FromQuery] string fromDate,
+    [FromQuery] string toDate,
+    CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
+                return BadRequest("fromDate and toDate are required.");
+
+            var data = await _dbAccess.GetIncomeStatementAsync(fromDate, toDate, ct);
+            return Ok(data);
+        }
+
         private List<ItemsLookup> ItemList;
 
         [HttpGet("options")]

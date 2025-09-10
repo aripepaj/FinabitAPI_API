@@ -9,6 +9,12 @@ IF OBJECT_ID(N'dbo.spTransactionsList_API', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.spTransactionsList_API AS RETURN;');
 GO
 
+/****** Object:  StoredProcedure [dbo].[spTransactionsList_API]    Script Date: 9/10/2025 3:43:22 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
 ALTER PROCEDURE [dbo].[spTransactionsList_API]
     @FromDate       varchar(100),
     @ToDate         varchar(100),
@@ -72,13 +78,15 @@ BEGIN
         CAST(CASE
                 WHEN ISNULL(r.InvoicedQuantity, 0) = 0 AND ISNULL(r.cnt, 0) = 0 THEN N'Pa faturuar'
                 WHEN ISNULL(r.InvoicedQuantity, 0) >= td.Quantity                   THEN N'Faturuar'
-                ELSE N'Faturuar Pjesërisht'
+                ELSE N'Faturuar Pjeserisht'
              END AS varchar(30)) AS Statusi_Faturimit,
         td.ItemID            AS Shifra,
         i.ItemName           AS Emertimi,
         u.UnitName           AS Njesia_Artik,
         td.Quantity          AS Sasia,
-        td.VATPrice          AS Cmimi
+        td.VATPrice          AS Cmimi,
+		td.PriceWithDiscount AS SalesPrice,
+		td.Price AS CostPrice
     FROM  dbo.tblTransactions t
     INNER JOIN tblTransactionsDetails td ON td.TransactionID = t.ID
     INNER JOIN tblItems i ON i.ItemID = td.ItemID
@@ -95,4 +103,3 @@ BEGIN
     ORDER BY t.ID DESC
     OPTION (RECOMPILE);
 END
-GO

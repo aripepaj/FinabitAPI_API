@@ -1916,23 +1916,26 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
             cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
 
-            await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
+            await using var dr = await cmd.ExecuteReaderAsync(ct);
+
             while (await dr.ReadAsync(ct))
             {
                 list.Add(new Orders
                 {
-                    ID = Convert.ToInt32(dr["ID"]),
-                    Data = Convert.ToDateTime(dr["Data"]),
-                    Numri = Convert.ToString(dr["Numri"]),
-                    ID_Konsumatorit = Convert.ToInt32(dr["ID_Konsumatorit"]),
-                    Konsumatori = Convert.ToString(dr["Konsumatori"]),
-                    Komercialisti = Convert.ToString(dr["Komercialisti"]),
-                    Statusi_Faturimit = Convert.ToString(dr["Statusi_Faturimit"]),
-                    Shifra = Convert.ToString(dr["Shifra"]),
-                    Emertimi = Convert.ToString(dr["Emertimi"]),
-                    Njesia_Artik = Convert.ToString(dr["Njesia_Artik"]),
-                    Sasia = Convert.ToDecimal(dr["Sasia"]),
-                    Cmimi = Convert.ToDecimal(dr["Cmimi"])
+                    ID = dr["ID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID"]),
+                    Data = dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
+                    Numri = dr["Numri"] == DBNull.Value ? null : Convert.ToString(dr["Numri"]),
+                    ID_Konsumatorit = dr["ID_Konsumatorit"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID_Konsumatorit"]),
+                    Konsumatori = dr["Konsumatori"] == DBNull.Value ? null : Convert.ToString(dr["Konsumatori"]),
+                    Komercialisti = dr["Komercialisti"] == DBNull.Value ? null : Convert.ToString(dr["Komercialisti"]),
+                    Statusi_Faturimit = dr["Statusi_Faturimit"] == DBNull.Value ? null : Convert.ToString(dr["Statusi_Faturimit"]),
+                    Shifra = dr["Shifra"] == DBNull.Value ? null : Convert.ToString(dr["Shifra"]),
+                    Emertimi = dr["Emertimi"] == DBNull.Value ? null : Convert.ToString(dr["Emertimi"]),
+                    Njesia_Artik = dr["Njesia_Artik"] == DBNull.Value ? null : Convert.ToString(dr["Njesia_Artik"]),
+                    Sasia = dr["Sasia"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Sasia"]),
+                    Cmimi = dr["Cmimi"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Cmimi"]),
+                    SalesPrice = dr["SalesPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["SalesPrice"]),
+                    CostPrice = dr["CostPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["CostPrice"])
                 });
             }
 
@@ -1962,14 +1965,49 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName ?? string.Empty });
             cmd.Parameters.Add(new SqlParameter("@DepartmentName", SqlDbType.NVarChar, 200) { Value = departmentName ?? string.Empty });
 
-            await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
+            await using var dr = await cmd.ExecuteReaderAsync(ct);
+
             while (await dr.ReadAsync(ct))
             {
                 list.Add(new TransactionAggregate
                 {
-                    Data = Convert.ToDateTime(dr["Data"]),
-                    Value = Convert.ToDecimal(dr["Value"]),
-                    Rows = Convert.ToInt32(dr["rows"])
+                    Data = dr["Data"] != DBNull.Value ? Convert.ToDateTime(dr["Data"]) : default,
+                    Value = dr["Value"] != DBNull.Value ? Convert.ToDecimal(dr["Value"]) : 0,
+                    ValueWithoutVat = dr["ValueWithoutVat"] != DBNull.Value ? Convert.ToDecimal(dr["ValueWithoutVat"]) : 0,
+                    CostValue = dr["CostValue"] != DBNull.Value ? Convert.ToDecimal(dr["CostValue"]) : 0,
+                    Rows = dr["rows"] != DBNull.Value ? Convert.ToInt32(dr["rows"]) : 0
+                });
+            }
+
+            return list;
+        }
+
+        public async Task<List<IncomeStatement>> GetIncomeStatementAsync(
+    string fromDate,
+    string toDate,
+    CancellationToken ct = default)
+        {
+            var list = new List<IncomeStatement>();
+
+            await using var cnn = await OpenWithRetryAsync(ct);
+            await using var cmd = new SqlCommand("spIncomeStatement_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            cmd.Parameters.Add(new SqlParameter("@prmFromDate", SqlDbType.SmallDateTime) { Value = fromDate });
+            cmd.Parameters.Add(new SqlParameter("@prmEndDate", SqlDbType.SmallDateTime) { Value = toDate });
+
+            await using var dr = await cmd.ExecuteReaderAsync(ct);
+            while (await dr.ReadAsync(ct))
+            {
+                list.Add(new IncomeStatement
+                {
+                    Account = dr["Account"] == DBNull.Value ? null : dr["Account"].ToString(),
+                    AccountGroup = dr["AccountGroup"] == DBNull.Value ? null : dr["AccountGroup"].ToString(),
+                    Date = dr["Date"] == DBNull.Value ? default : Convert.ToDateTime(dr["Date"]),
+                    Total = dr["Total"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Total"])
                 });
             }
 

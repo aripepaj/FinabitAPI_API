@@ -8,6 +8,7 @@ IF OBJECT_ID(N'dbo.spTransactionsListAggregate_API', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.spTransactionsListAggregate_API AS RETURN;');
 GO
 
+
 ALTER PROCEDURE [dbo].[spTransactionsListAggregate_API]
     @FromDate        varchar(100),
     @ToDate          varchar(100),
@@ -63,6 +64,8 @@ BEGIN
     SELECT
         t.[TransactionDate]                AS Data,
         SUM(td.Quantity * td.VATPrice)     AS Value,
+		SUM(td.Quantity * td.PriceWithDiscount)     AS ValueWIthoutVat,
+		SUM(td.Quantity * td.Price)     AS CostValue,
         COUNT(*)                           AS rows
     FROM dbo.tblTransactions t
     INNER JOIN tblTransactionsDetails td ON td.TransactionID = t.ID

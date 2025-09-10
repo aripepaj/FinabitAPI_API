@@ -18,6 +18,8 @@ namespace AutoBit_WebInvoices.Models
         public string Emertimi { get; set; }
         public string Njesia_Artik { get; set; }
         public decimal Sasia { get; set; }
-        public decimal Cmimi { get; set; }
+        public decimal Cmimi { get; set; }       
+        public decimal SalesPrice { get; set; }   
+        public decimal CostPrice { get; set; }
     }
 }
