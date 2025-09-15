@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using AutoBit_WebInvoices.Models;
 using FinabitAPI.Multitenancy;
 using FinabitAPI.Utilis;
+using FinabitAPI.Repository;
 
 var baseDir = AppContext.BaseDirectory;        
 Directory.SetCurrentDirectory(baseDir);          
@@ -43,6 +44,7 @@ builder.Services.AddHostedService<DatabaseBootstrapper>();
 builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
+builder.Services.AddScoped<AccountDetailsRepository>();
 
 builder.Services.AddControllers();
 

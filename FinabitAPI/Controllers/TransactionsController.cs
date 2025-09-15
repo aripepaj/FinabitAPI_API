@@ -2519,42 +2519,50 @@ namespace FinabitAPI.Controllers
     string fromDate, string toDate, int tranTypeID,
     string itemID = null, string itemName = null, string partnerName = null,
     string departmentName = null,
+    bool isMonthly = false,                                 // <-- NEW
     CancellationToken ct = default)
         {
             return _dbAccess.GetTransactionsAggregate(
-                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName, ct);
+                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName,
+                isMonthly,                                           // <-- pass it down
+                ct);
         }
 
         [HttpGet("TransactionsAggregate")]
         public async Task<IActionResult> GetAggregate(
-                [FromQuery] string fromDate,
-                [FromQuery] string toDate,
-                [FromQuery] int tranTypeID,
-                [FromQuery] string itemID = null,
-                [FromQuery] string itemName = null,
-                [FromQuery] string partnerName = null,
-                [FromQuery] string departmentName = null,
-                CancellationToken ct = default)
+          [FromQuery] string fromDate,
+          [FromQuery] string toDate,
+          [FromQuery] int tranTypeID,
+          [FromQuery] string itemID = null,
+          [FromQuery] string itemName = null,
+          [FromQuery] string partnerName = null,
+          [FromQuery] string departmentName = null,
+          [FromQuery] bool isMonthly = false,                    // <-- NEW
+          CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest("fromDate and toDate are required.");
 
             var data = await GetTransactionsAggregateAsync(
-                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName, ct);
+                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName,
+                isMonthly,                                          // <-- pass it
+                ct);
 
             return Ok(data);
         }
 
         [HttpGet("IncomeStatement")]
         public async Task<IActionResult> GetIncomeStatement(
-    [FromQuery] string fromDate,
-    [FromQuery] string toDate,
-    CancellationToken ct = default)
+     [FromQuery] string fromDate,
+     [FromQuery] string toDate,
+     [FromQuery] bool isMonthly = false,             // NEW
+     [FromQuery] string filter = "",                 // NEW
+     CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest("fromDate and toDate are required.");
 
-            var data = await _dbAccess.GetIncomeStatementAsync(fromDate, toDate, ct);
+            var data = await _dbAccess.GetIncomeStatementAsync(fromDate, toDate, isMonthly, filter, ct);
             return Ok(data);
         }
 

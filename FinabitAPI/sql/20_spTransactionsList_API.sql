@@ -9,11 +9,6 @@ IF OBJECT_ID(N'dbo.spTransactionsList_API', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.spTransactionsList_API AS RETURN;');
 GO
 
-/****** Object:  StoredProcedure [dbo].[spTransactionsList_API]    Script Date: 9/10/2025 3:43:22 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
 
 ALTER PROCEDURE [dbo].[spTransactionsList_API]
     @FromDate       varchar(100),
@@ -53,21 +48,7 @@ BEGIN
             SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
     END
 
-    ;WITH Invoiced AS
-    (
-        SELECT
-            t.referenceid,
-            td.ItemID,
-            InvoicedQuantity = SUM(td.Quantity),
-            cnt              = COUNT_BIG(*)
-        FROM tblTransactions t
-        INNER JOIN tblTransactionsDetails td ON td.TransactionID = t.ID
-        WHERE ISNULL(t.ReferenceID, 0) <> 0
-          AND t.TransactionTypeID IN (2)
-          AND (@fd IS NULL OR t.[TransactionDate] >= DATEADD(day, -7,  @fd))
-          AND (@td IS NULL OR t.[TransactionDate] <= DATEADD(day,  30, @td))
-        GROUP BY t.referenceid, td.ItemID
-    )
+
     SELECT
         t.[ID],
         t.[TransactionDate]  AS Data,
@@ -75,11 +56,7 @@ BEGIN
         p.PartnerID          AS ID_Konsumatorit,
         p.PartnerName        AS Konsumatori,
         d.DepartmentName     AS Komercialisti,
-        CAST(CASE
-                WHEN ISNULL(r.InvoicedQuantity, 0) = 0 AND ISNULL(r.cnt, 0) = 0 THEN N'Pa faturuar'
-                WHEN ISNULL(r.InvoicedQuantity, 0) >= td.Quantity                   THEN N'Faturuar'
-                ELSE N'Faturuar Pjeserisht'
-             END AS varchar(30)) AS Statusi_Faturimit,
+        ''AS Statusi_Faturimit,
         td.ItemID            AS Shifra,
         i.ItemName           AS Emertimi,
         u.UnitName           AS Njesia_Artik,
@@ -89,11 +66,10 @@ BEGIN
 		td.Price AS CostPrice
     FROM  dbo.tblTransactions t
     INNER JOIN tblTransactionsDetails td ON td.TransactionID = t.ID
-    INNER JOIN tblItems i ON i.ItemID = td.ItemID
-    INNER JOIN tblUnits u ON u.UnitID = i.UnitID
+    LEFT JOIN tblItems i ON i.ItemID = td.ItemID
+    LEFT JOIN tblUnits u ON u.UnitID = i.UnitID
     LEFT  JOIN dbo.tblPartners   p ON p.PartnerID    = t.PartnerID
     LEFT  JOIN dbo.tblDepartment d ON d.DepartmentID = t.DepartmentID
-    LEFT  JOIN Invoiced r ON r.referenceid = t.ID AND r.ItemID = td.ItemID
     WHERE (@fd IS NULL OR t.[TransactionDate] >= @fd)
       AND (@td IS NULL OR t.[TransactionDate] <= @td)
       AND t.TransactionTypeID = @TranTypeID

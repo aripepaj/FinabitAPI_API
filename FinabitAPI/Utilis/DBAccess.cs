@@ -1945,7 +1945,7 @@ namespace FinabitAPI.Utilis
         public async Task<List<TransactionAggregate>> GetTransactionsAggregate(
      string fromDate, string toDate, int type,
      string itemID = null, string itemName = null, string partnerName = null,
-     string departmentName = null,
+     string departmentName = null, bool isMonthly = false,
      CancellationToken ct = default)
         {
             var list = new List<TransactionAggregate>();
@@ -1964,6 +1964,7 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = itemName ?? string.Empty });
             cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName ?? string.Empty });
             cmd.Parameters.Add(new SqlParameter("@DepartmentName", SqlDbType.NVarChar, 200) { Value = departmentName ?? string.Empty });
+            cmd.Parameters.Add(new SqlParameter("@IsMonthly", SqlDbType.Bit) { Value = isMonthly });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
 
@@ -1985,6 +1986,8 @@ namespace FinabitAPI.Utilis
         public async Task<List<IncomeStatement>> GetIncomeStatementAsync(
     string fromDate,
     string toDate,
+    bool isMonthly = false,
+    string filter = "",                                // NEW
     CancellationToken ct = default)
         {
             var list = new List<IncomeStatement>();
@@ -1998,6 +2001,8 @@ namespace FinabitAPI.Utilis
 
             cmd.Parameters.Add(new SqlParameter("@prmFromDate", SqlDbType.SmallDateTime) { Value = fromDate });
             cmd.Parameters.Add(new SqlParameter("@prmEndDate", SqlDbType.SmallDateTime) { Value = toDate });
+            cmd.Parameters.Add(new SqlParameter("@filter", SqlDbType.NVarChar, 200) { Value = filter ?? string.Empty }); // NEW
+            cmd.Parameters.Add(new SqlParameter("@IsMonthly", SqlDbType.Bit) { Value = isMonthly });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
             while (await dr.ReadAsync(ct))
