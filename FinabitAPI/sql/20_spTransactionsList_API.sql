@@ -9,7 +9,6 @@ IF OBJECT_ID(N'dbo.spTransactionsList_API', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.spTransactionsList_API AS RETURN;');
 GO
 
-
 ALTER PROCEDURE [dbo].[spTransactionsList_API]
     @FromDate       varchar(100),
     @ToDate         varchar(100),
@@ -58,7 +57,7 @@ BEGIN
         d.DepartmentName     AS Komercialisti,
         ''AS Statusi_Faturimit,
         td.ItemID            AS Shifra,
-        i.ItemName           AS Emertimi,
+        ISNULL(i.ItemName, a.AccountDescription)           AS Emertimi,
         u.UnitName           AS Njesia_Artik,
         td.Quantity          AS Sasia,
         td.VATPrice          AS Cmimi,
@@ -67,6 +66,7 @@ BEGIN
     FROM  dbo.tblTransactions t
     INNER JOIN tblTransactionsDetails td ON td.TransactionID = t.ID
     LEFT JOIN tblItems i ON i.ItemID = td.ItemID
+	LEFT JOIN dbo.tblAccount a          ON a.Account        = td.ItemID
     LEFT JOIN tblUnits u ON u.UnitID = i.UnitID
     LEFT  JOIN dbo.tblPartners   p ON p.PartnerID    = t.PartnerID
     LEFT  JOIN dbo.tblDepartment d ON d.DepartmentID = t.DepartmentID
@@ -74,7 +74,7 @@ BEGIN
       AND (@td IS NULL OR t.[TransactionDate] <= @td)
       AND t.TransactionTypeID = @TranTypeID
       AND td.ItemID      LIKE @ItemID
-      AND i.ItemName     LIKE '%' + @ItemName + '%'
+      AND ISNULL(i.ItemName, a.AccountDescription)     LIKE '%' + @ItemName + '%'
       AND p.PartnerName  LIKE '%' +@PartnerName + '%'
     ORDER BY t.ID DESC
     OPTION (RECOMPILE);
