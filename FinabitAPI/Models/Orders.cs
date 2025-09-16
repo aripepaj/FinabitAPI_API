@@ -12,11 +12,12 @@ namespace AutoBit_WebInvoices.Models
         public string Numri { get; set; }
         public int ID_Konsumatorit { get; set; }
         public string Konsumatori { get; set; }
-        public string Komercialisti { get; set; }
+        public string Location { get; set; }
         public string Statusi_Faturimit { get; set; }
         public string Shifra { get; set; }
         public string Emertimi { get; set; }
         public string Njesia_Artik { get; set; }
+        public string Description { get; set; }
         public decimal Sasia { get; set; }
         public decimal Cmimi { get; set; }       
         public decimal SalesPrice { get; set; }   

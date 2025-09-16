@@ -146,10 +146,5 @@ namespace FinabitAPI.Repository
 
             return specs;
         }
-
-
-
-
-
     }
 }

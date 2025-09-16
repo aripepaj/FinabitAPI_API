@@ -1633,7 +1633,7 @@ namespace FinabitAPI.Utilis
                             cls.ID_Konsumatorit = Convert.ToInt32(dr["ID_Konsumatorit"]);
 
                             cls.Konsumatori = Convert.ToString(dr["Konsumatori"]);
-                            cls.Komercialisti = Convert.ToString(dr["Komercialisti"]);
+                            cls.Location = Convert.ToString(dr["Location"]);
                             cls.Statusi_Faturimit = Convert.ToString(dr["Statusi_Faturimit"]);
 
                             cls.Shifra = Convert.ToString(dr["Shifra"]);
@@ -1897,7 +1897,7 @@ namespace FinabitAPI.Utilis
 
         public async Task<List<Orders>> GetTransactions(
      string fromDate, string toDate, int type,
-     string itemID = null, string itemName = null, string partnerName = null,
+     string itemID = null, string itemName = null, string partnerName = null, string locationName = null,
      CancellationToken ct = default)
         {
             var list = new List<Orders>();
@@ -1915,6 +1915,7 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
             cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
             cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
+            cmd.Parameters.Add(new SqlParameter("@LocationName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(locationName) ? "%" : locationName });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
 
@@ -1927,11 +1928,12 @@ namespace FinabitAPI.Utilis
                     Numri = dr["Numri"] == DBNull.Value ? null : Convert.ToString(dr["Numri"]),
                     ID_Konsumatorit = dr["ID_Konsumatorit"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID_Konsumatorit"]),
                     Konsumatori = dr["Konsumatori"] == DBNull.Value ? null : Convert.ToString(dr["Konsumatori"]),
-                    Komercialisti = dr["Komercialisti"] == DBNull.Value ? null : Convert.ToString(dr["Komercialisti"]),
+                    Location = dr["LocationName"] == DBNull.Value ? null : Convert.ToString(dr["LocationName"]),
                     Statusi_Faturimit = dr["Statusi_Faturimit"] == DBNull.Value ? null : Convert.ToString(dr["Statusi_Faturimit"]),
                     Shifra = dr["Shifra"] == DBNull.Value ? null : Convert.ToString(dr["Shifra"]),
                     Emertimi = dr["Emertimi"] == DBNull.Value ? null : Convert.ToString(dr["Emertimi"]),
                     Njesia_Artik = dr["Njesia_Artik"] == DBNull.Value ? null : Convert.ToString(dr["Njesia_Artik"]),
+                    Description = dr["Description"] == DBNull.Value ? null : Convert.ToString(dr["Description"]),
                     Sasia = dr["Sasia"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Sasia"]),
                     Cmimi = dr["Cmimi"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Cmimi"]),
                     SalesPrice = dr["SalesPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["SalesPrice"]),
@@ -1945,7 +1947,7 @@ namespace FinabitAPI.Utilis
         public async Task<List<TransactionAggregate>> GetTransactionsAggregate(
      string fromDate, string toDate, int type,
      string itemID = null, string itemName = null, string partnerName = null,
-     string departmentName = null, bool isMonthly = false,
+     string locationName = null, bool isMonthly = false,
      CancellationToken ct = default)
         {
             var list = new List<TransactionAggregate>();
@@ -1961,9 +1963,9 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.VarChar) { Value = toDate });
             cmd.Parameters.Add(new SqlParameter("@TranTypeID", SqlDbType.Int) { Value = type });
             cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = itemName ?? string.Empty });
-            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName ?? string.Empty });
-            cmd.Parameters.Add(new SqlParameter("@DepartmentName", SqlDbType.NVarChar, 200) { Value = departmentName ?? string.Empty });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
+            cmd.Parameters.Add(new SqlParameter("@LocationName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(locationName) ? "%" : locationName });
             cmd.Parameters.Add(new SqlParameter("@IsMonthly", SqlDbType.Bit) { Value = isMonthly });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
@@ -1972,11 +1974,12 @@ namespace FinabitAPI.Utilis
             {
                 list.Add(new TransactionAggregate
                 {
-                    Data = dr["Data"] != DBNull.Value ? Convert.ToDateTime(dr["Data"]) : default,
-                    Value = dr["Value"] != DBNull.Value ? Convert.ToDecimal(dr["Value"]) : 0,
-                    ValueWithoutVat = dr["ValueWithoutVat"] != DBNull.Value ? Convert.ToDecimal(dr["ValueWithoutVat"]) : 0,
-                    CostValue = dr["CostValue"] != DBNull.Value ? Convert.ToDecimal(dr["CostValue"]) : 0,
-                    Rows = dr["rows"] != DBNull.Value ? Convert.ToInt32(dr["rows"]) : 0
+                    Data = dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
+                    LocationName = dr["LocationName"] == DBNull.Value ? null : Convert.ToString(dr["LocationName"]), // NEW
+                    Value = dr["Value"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Value"]),
+                    ValueWithoutVat = dr["ValueWithoutVat"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["ValueWithoutVat"]),
+                    CostValue = dr["CostValue"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["CostValue"]),
+                    Rows = dr["rows"] == DBNull.Value ? 0 : Convert.ToInt32(dr["rows"])
                 });
             }
 
@@ -2017,6 +2020,92 @@ namespace FinabitAPI.Utilis
             }
 
             return list;
+        }
+
+        public async Task<PaginationResult<ItemsLookup>> GetAllItemsFilteredAsync(ItemsFilter filter, CancellationToken ct = default)
+        {
+            var items = new List<ItemsLookup>();
+            int totalCount = 0;
+
+            // ✅ Use the same open routine (prevents null/empty ConnectionString cases)
+            await using var cnn = await OpenWithRetryAsync(ct);
+            await using var cmd = new SqlCommand("spGetItemsAll_Filtered_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            cmd.Parameters.Add("@ItemName", SqlDbType.NVarChar, 200).Value = (object?)filter.ItemName ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemID", SqlDbType.NVarChar, 100).Value = (object?)filter.ItemID ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemGroupID", SqlDbType.Int).Value = (object?)filter.ItemGroupID ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemGroup", SqlDbType.NVarChar, 200).Value = (object?)filter.ItemGroup ?? DBNull.Value;
+            cmd.Parameters.Add("@Barcode", SqlDbType.NVarChar, 100).Value = (object?)filter.Barcode ?? DBNull.Value;
+            cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 200).Value = (object?)filter.Category ?? DBNull.Value;
+            cmd.Parameters.Add("@Prodhuesi", SqlDbType.NVarChar, 200).Value = (object?)filter.Prodhuesi ?? DBNull.Value;
+            cmd.Parameters.Add("@Active", SqlDbType.Bit).Value = (object?)filter.Active ?? DBNull.Value;
+            cmd.Parameters.Add("@PageNumber", SqlDbType.Int).Value = filter.PageNumber;
+            cmd.Parameters.Add("@PageSize", SqlDbType.Int).Value = filter.PageSize;
+
+            await using var dr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+
+            while (await dr.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var cls = new ItemsLookup
+                {
+                    ID = dr["Id"] != DBNull.Value ? Convert.ToInt32(dr["Id"]) : 0,
+                    ItemID = dr["ItemID"] as string ?? string.Empty,
+                    ItemName = dr["ItemName"] as string ?? string.Empty,
+                    UnitName = dr["UnitName"] as string ?? string.Empty,
+                    UnitID = dr["UnitID"] != DBNull.Value ? Convert.ToInt32(dr["UnitID"]) : 0,
+                    ItemGroupID = dr["ItemGroupID"] != DBNull.Value ? Convert.ToInt32(dr["ItemGroupID"]) : 0,
+                    ItemGroup = dr["ItemGroup"] as string ?? string.Empty,
+                    Taxable = dr["Taxable"] != DBNull.Value && Convert.ToBoolean(dr["Taxable"]),
+                    Active = dr["Active"] != DBNull.Value && Convert.ToBoolean(dr["Active"]),
+                    Dogana = dr["Dogana"] != DBNull.Value && Convert.ToBoolean(dr["Dogana"]),
+                    Akciza = dr["Akciza"] != DBNull.Value && Convert.ToBoolean(dr["Akciza"]),
+                    Color = dr["Color"] as string ?? string.Empty,
+                    PDAItemName = dr["PDAItemName"] as string ?? string.Empty,
+                    VATValue = dr["VATValue"] != DBNull.Value ? Convert.ToDecimal(dr["VATValue"]) : 0m,
+                    AkcizaValue = dr["AkcizaValue"] != DBNull.Value ? Convert.ToDecimal(dr["AkcizaValue"]) : 0m,
+                    MaximumQuantity = dr["MaximumQuantity"]?.ToString() ?? "0",
+                    Coefficient = dr["Coefficient"] != DBNull.Value ? Convert.ToDecimal(dr["Coefficient"]) : 0m,
+                    Barcode1 = dr["barcode1"] as string ?? string.Empty,
+                    Barcode2 = dr["barcode2"] as string ?? string.Empty,
+                    SalesPrice2 = dr["SalesPrice2"] != DBNull.Value ? Convert.ToDecimal(dr["SalesPrice2"]) : 0m,
+                    SalesPrice3 = dr["SalesPrice3"] != DBNull.Value ? Convert.ToDecimal(dr["SalesPrice3"]) : 0m,
+                    Origin = dr["Origin"] as string ?? string.Empty,
+                    Category = dr["Category"] as string ?? string.Empty,
+                    PLU = dr["PLU"] as string ?? string.Empty,
+                    ItemTemplate = dr["ItemTemplate"] as string ?? string.Empty,
+                    Weight = dr["Weight"] != DBNull.Value ? Convert.ToDecimal(dr["Weight"]) : 0m,
+                    Author = dr["Author"] as string ?? string.Empty,
+                    Publisher = dr["Publisher"] as string ?? string.Empty,
+                    CustomField1 = dr["CustomField1"] as string ?? string.Empty,
+                    CustomField2 = dr["CustomField2"] as string ?? string.Empty,
+                    CustomField3 = dr["CustomField3"] as string ?? string.Empty,
+                    CustomField4 = dr["CustomField4"] as string ?? string.Empty,
+                    CustomField5 = dr["CustomField5"] as string ?? string.Empty,
+                    CustomField6 = dr["CustomField6"] as string ?? string.Empty,
+                    Barcode3 = dr["Barcode3"] as string ?? string.Empty,
+                    NettoBruttoWeight = dr["NettoBruttoWeight"] != DBNull.Value ? Convert.ToDecimal(dr["NettoBruttoWeight"]) : 0m,
+                    BrutoWeight = dr["BrutoWeight"] != DBNull.Value ? Convert.ToDecimal(dr["BrutoWeight"]) : 0m,
+                    MaxDiscount = dr["MaxDiscount"] != DBNull.Value ? Convert.ToDecimal(dr["MaxDiscount"]) : 0m,
+                    ShifraProdhuesi = int.TryParse(dr["ShifraProdhuesit"]?.ToString(), out var val) ? val : 0,
+                    Prodhuesi = dr["Prodhuesi"] as string ?? string.Empty
+                };
+
+                if (totalCount == 0 && dr["TotalCount"] != DBNull.Value)
+                    totalCount = Convert.ToInt32(dr["TotalCount"]);
+
+                items.Add(cls);
+            }
+
+            return new PaginationResult<ItemsLookup>
+            {
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize),
+                Items = items
+            };
         }
     }
 }

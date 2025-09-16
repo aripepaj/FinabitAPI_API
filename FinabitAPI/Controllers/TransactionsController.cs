@@ -994,9 +994,10 @@ namespace FinabitAPI.Controllers
             [FromQuery] string ItemID = null,
             [FromQuery] string ItemName = null,
             [FromQuery] string PartnerName = null,
+            [FromQuery] string LocationName = null,
             CancellationToken ct = default)      
         {
-            var rows = await GetTransactionsAsync(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName, ct);
+            var rows = await GetTransactionsAsync(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName, LocationName, ct);
             return Ok(rows);
         }
 
@@ -2310,9 +2311,9 @@ namespace FinabitAPI.Controllers
         }
 
 
-        private Task<List<Orders>> GetTransactionsAsync(string fromDate, string toDate, int tranTypeID, string itemID = null, string itemName = null, string partnerName = null, CancellationToken ct = default)
+        private Task<List<Orders>> GetTransactionsAsync(string fromDate, string toDate, int tranTypeID, string itemID = null, string itemName = null, string partnerName = null, string locationName = null, CancellationToken ct = default)
         {
-            return _dbAccess.GetTransactions(fromDate, toDate, tranTypeID, itemID, itemName, partnerName, ct);
+            return _dbAccess.GetTransactions(fromDate, toDate, tranTypeID, itemID, itemName, partnerName, locationName, ct);
         }
 
         private Transactions GetTransaction(XMLTransactions t)

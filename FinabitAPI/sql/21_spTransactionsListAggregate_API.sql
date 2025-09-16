@@ -8,7 +8,6 @@ IF OBJECT_ID(N'dbo.[spTransactionsListAggregate_API]', N'P') IS NULL
     EXEC('CREATE PROCEDURE dbo.[spTransactionsListAggregate_API] AS RETURN;');
 GO
 
-
 ALTER PROCEDURE [dbo].[spTransactionsListAggregate_API]
     @FromDate        varchar(100),
     @ToDate          varchar(100),
@@ -16,7 +15,7 @@ ALTER PROCEDURE [dbo].[spTransactionsListAggregate_API]
     @ItemID          nvarchar(200) = N'%',
     @ItemName        nvarchar(200) = N'%',
     @PartnerName     nvarchar(200) = N'%',
-    @DepartmentName  nvarchar(200) = N'',
+    @LocationName    nvarchar(200) = N'%',
     @IsMonthly       bit           = 0      -- 0 = daily (default), 1 = monthly
 AS
 BEGIN
@@ -25,6 +24,7 @@ BEGIN
     IF @ItemID = N''      SET @ItemID = N'%';
     IF @ItemName = N''    SET @ItemName = N'%';
     IF @PartnerName = N'' SET @PartnerName = N'%';
+	IF @LocationName = N''   SET @LocationName = N'%';
 
     DECLARE @fd datetime, @td datetime;
 
@@ -57,6 +57,7 @@ BEGIN
                 THEN DATEADD(MONTH, DATEDIFF(MONTH, 0, t.[TransactionDate]), 0)
             ELSE CAST(t.[TransactionDate] AS date)  -- group by day (strip time)
         END AS Data,
+		d.DepartmentName AS LocationName,
         SUM(td.Quantity * td.VATPrice)          AS Value,
         SUM(td.Quantity * td.PriceWithDiscount) AS ValueWIthoutVat, -- keep existing alias
         SUM(td.Quantity * td.Price)             AS CostValue,
@@ -74,13 +75,14 @@ BEGIN
       AND td.ItemID LIKE @ItemID
       AND ISNULL(i.ItemName, a.AccountDescription) LIKE '%' + @ItemName + '%'
       AND p.PartnerName LIKE '%' + @PartnerName + '%'
-      AND (ISNULL(@DepartmentName, N'') = N'' OR d.DepartmentName LIKE '%' + @DepartmentName + '%')
+      AND (ISNULL(@LocationName, N'') = N'' OR d.DepartmentName LIKE '%' + @LocationName + '%')
     GROUP BY
         CASE 
             WHEN @IsMonthly = 1 
                 THEN DATEADD(MONTH, DATEDIFF(MONTH, 0, t.[TransactionDate]), 0)
             ELSE CAST(t.[TransactionDate] AS date)
-        END
+        END,
+		 d.DepartmentName 
     ORDER BY
         CASE 
             WHEN @IsMonthly = 1 
@@ -89,5 +91,3 @@ BEGIN
         END DESC
     OPTION (RECOMPILE);
 END
-GO
-

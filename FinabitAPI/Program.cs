@@ -45,6 +45,7 @@ builder.Services.AddScoped<UsersRepository>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 builder.Services.AddScoped<AccountDetailsRepository>();
+builder.Services.AddScoped<ItemRepository>();
 
 builder.Services.AddControllers();
 

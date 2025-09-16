@@ -13,7 +13,6 @@ using System.Net;
 
 namespace FinabitAPI.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ItemsController : ControllerBase
@@ -26,7 +25,6 @@ namespace FinabitAPI.Controllers
         {
             _configuration = configuration;
             _dbAccess = dbAccess;
-          
         }
 
         [HttpGet("LoadItems")]
@@ -861,6 +859,11 @@ namespace FinabitAPI.Controllers
           
             return ItemRepository.SelectAllGjirafa();
         }
+
+        [HttpPost("GetAllItemsFiltered")]
+        public async Task<ActionResult<PaginationResult<ItemsLookup>>> GetAllItemsFiltered([FromBody] ItemsFilter filter, CancellationToken ct)
+            => await _dbAccess.GetAllItemsFilteredAsync(filter, ct);
+
 
     }
 }

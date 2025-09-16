@@ -1,12 +1,11 @@
--- 020_spTransactionsList_API.sql
+/****** Object:  StoredProcedure [dbo].[spTransactionsList_API]    Script Date: 9/15/2025 11:46:07 AM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
--- Create stub if missing (for old servers without CREATE OR ALTER)
-IF OBJECT_ID(N'dbo.spTransactionsList_API', N'P') IS NULL
-    EXEC('CREATE PROCEDURE dbo.spTransactionsList_API AS RETURN;');
+IF OBJECT_ID(N'dbo.[spTransactionsList_API]', N'P') IS NULL
+    EXEC('CREATE PROCEDURE dbo.[spTransactionsList_API] AS RETURN;');
 GO
 
 ALTER PROCEDURE [dbo].[spTransactionsList_API]
@@ -15,7 +14,8 @@ ALTER PROCEDURE [dbo].[spTransactionsList_API]
     @TranTypeID     int,
     @ItemID         nvarchar(200) = N'%',
     @ItemName       nvarchar(200) = N'%',
-    @PartnerName    nvarchar(200) = N'%'
+    @PartnerName    nvarchar(200) = N'%',
+    @LocationName   nvarchar(200) = N'%'
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -23,6 +23,7 @@ BEGIN
     IF @ItemID = N''      SET @ItemID = N'%';
     IF @ItemName = N''    SET @ItemName = N'%';
     IF @PartnerName = N'' SET @PartnerName = N'%';
+	IF @LocationName = N''  SET @LocationName = N'%';
 
     -- Use datetime + CONVERT/ISDATE for older servers
     DECLARE @fd datetime, @td datetime;
@@ -54,11 +55,12 @@ BEGIN
         t.[InvoiceNo]        AS Numri,
         p.PartnerID          AS ID_Konsumatorit,
         p.PartnerName        AS Konsumatori,
-        d.DepartmentName     AS Komercialisti,
+        d.DepartmentName     AS LocationName,
         ''AS Statusi_Faturimit,
         td.ItemID            AS Shifra,
         ISNULL(i.ItemName, a.AccountDescription)           AS Emertimi,
         u.UnitName           AS Njesia_Artik,
+		td.Itemname          AS Description,
         td.Quantity          AS Sasia,
         td.VATPrice          AS Cmimi,
 		td.PriceWithDiscount AS SalesPrice,
@@ -76,6 +78,7 @@ BEGIN
       AND td.ItemID      LIKE @ItemID
       AND ISNULL(i.ItemName, a.AccountDescription)     LIKE '%' + @ItemName + '%'
       AND p.PartnerName  LIKE '%' +@PartnerName + '%'
+	  AND d.DepartmentName LIKE '%' + @LocationName + '%'
     ORDER BY t.ID DESC
     OPTION (RECOMPILE);
 END
