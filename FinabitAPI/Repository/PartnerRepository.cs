@@ -2,9 +2,18 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using FinabitAPI.Utilis;
+using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 
 namespace AutoBit_WebInvoices.Models
 {
+    public class ProgramInitializer
+    {
+        public static void InitializeGlobalRepository(IConfiguration configuration)
+        {
+            GlobalRepository.Initialize(configuration);
+        }
+    }
     public class PartnerRepository
     {
         public void Insert(Partner cls)
@@ -1465,5 +1474,54 @@ namespace AutoBit_WebInvoices.Models
             return message;
         }
 
+
+        public List<PartnerModel> GetPartners(int partnerTypeID = 2, string partnerName = "%", string partnerGroup = "%", string partnerCategory = "%", string placeName = "%", string stateName = "%")
+        {
+            var partners = new List<PartnerModel>();
+            SqlConnection cnn = GlobalRepository.GetConnection();
+            SqlCommand cmd = new SqlCommand("spGetPartners_API", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.Add(new SqlParameter("@PartnerTypeID", SqlDbType.Int) { Value = partnerTypeID });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName });
+            cmd.Parameters.Add(new SqlParameter("@PartnerGroup", SqlDbType.NVarChar, 200) { Value = partnerGroup });
+            cmd.Parameters.Add(new SqlParameter("@PartnerCategory", SqlDbType.NVarChar, 200) { Value = partnerCategory });
+            cmd.Parameters.Add(new SqlParameter("@PlaceName", SqlDbType.NVarChar, 200) { Value = placeName });
+            cmd.Parameters.Add(new SqlParameter("@StateName", SqlDbType.NVarChar, 200) { Value = stateName });
+
+            try
+            {
+                cnn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        partners.Add(new PartnerModel
+                        {
+                            PartnerID = reader["PartnerID"] == DBNull.Value ? 0 : (int)reader["PartnerID"],
+                            PartnerName = reader["PartnerName"]?.ToString(),
+                            FiscalNo = reader["FiscalNo"]?.ToString(),
+                            BusinessNo = reader["BusinessNo"]?.ToString(),
+                            Address = reader["Address"]?.ToString(),
+                            Email = reader["Email"]?.ToString(),
+                            PlaceName = reader["PlaceName"]?.ToString(),
+                            StateName = reader["StateName"]?.ToString(),
+                            Group = reader["Group"]?.ToString(),
+                            Category = reader["Category"]?.ToString(),
+                            DueDays = reader["DueDays"] == DBNull.Value ? 0 : Convert.ToInt32(reader["DueDays"]),
+                            DueValueMaximum = reader["DueValueMaximum"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValueMaximum"]),
+                            DueValue = reader["DueValue"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValue"])
+                        });
+                    }
+                }
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return partners;
+        }
     }
 }

@@ -6,6 +6,7 @@ using AutoBit_WebInvoices.Models;
 using FinabitAPI.Multitenancy;
 using FinabitAPI.Utilis;
 using FinabitAPI.Repository;
+using Finabit_API.Models;
 
 var baseDir = AppContext.BaseDirectory;        
 Directory.SetCurrentDirectory(baseDir);          
@@ -15,6 +16,9 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     ContentRootPath = baseDir,                
     Args = args
 });
+
+// Initialize GlobalRepository with configuration
+ProgramInitializer.InitializeGlobalRepository(builder.Configuration);
 
 builder.Host.UseWindowsService();
 
@@ -46,6 +50,7 @@ builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 builder.Services.AddScoped<AccountDetailsRepository>();
 builder.Services.AddScoped<ItemRepository>();
+builder.Services.AddScoped<PartnerRepository>();
 
 builder.Services.AddControllers();
 
