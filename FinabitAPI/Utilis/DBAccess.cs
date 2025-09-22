@@ -2107,5 +2107,94 @@ namespace FinabitAPI.Utilis
                 Items = items
             };
         }
+
+        public int ItemsAdvancedExists(int departmentId, string itemId = null, string itemName = null, string barcode = null)
+        {
+            int foundId = 0;
+            using (SqlConnection cnn = GetConnection())
+            {
+                SqlCommand cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    CommandTimeout = DefaultCommandTimeoutSeconds
+                };
+                cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
+                cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
+                cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
+                cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+
+                try
+                {
+                    cnn.Open();
+                    object ob = cmd.ExecuteScalar();
+                    if (ob != null && ob != DBNull.Value)
+                        foundId = Convert.ToInt32(ob);
+                }
+                catch
+                {
+                    foundId = 0; // swallow, caller will treat as not found
+                }
+            }
+            return foundId;
+        }
+
+        public async Task<IReadOnlyList<DistinctItemNameDto>> GetDistinctItemNamesAsync(
+     string itemId = "",
+     string itemName = "",
+     CancellationToken cancellationToken = default)
+        {
+            var results = new List<DistinctItemNameDto>();
+
+            await using var cnn = GetConnection();
+            await using var cmd = new SqlCommand("[dbo].[spGeDistinctItyemNames_API]", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            // If you want "empty means no filter", pass DBNull.Value to the SP.
+            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+            {
+                Value = string.IsNullOrWhiteSpace(itemId) ? DBNull.Value : itemId
+            });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+            {
+                Value = string.IsNullOrWhiteSpace(itemName) ? DBNull.Value : itemName
+            });
+
+            try
+            {
+                await cnn.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                await using var dr = await cmd
+                    .ExecuteReaderAsync(CommandBehavior.CloseConnection, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!dr.HasRows) return results;
+
+                int oDetailsType = dr.GetOrdinal("DetailsType");
+                int oItemID = dr.GetOrdinal("ItemID");
+                int oDescription = dr.GetOrdinal("Description");
+                int oItemNameCol = dr.GetOrdinal("ItemName");
+
+                while (await dr.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    results.Add(new DistinctItemNameDto
+                    {
+                        DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
+                        ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
+                        Description = dr.IsDBNull(oDescription) ? null : dr.GetString(oDescription),
+                        ItemName = dr.IsDBNull(oItemNameCol) ? null : dr.GetString(oItemNameCol)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                String msg = ex.Message;
+            }
+
+            return results;
+        }
+
     }
 }

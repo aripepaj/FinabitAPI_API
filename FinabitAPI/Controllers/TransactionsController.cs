@@ -497,7 +497,7 @@ namespace FinabitAPI.Controllers
                 {
                     item.LocationID = matchedItem.LocationID;
                 }
-            }
+            } 
 
 
 
@@ -672,7 +672,7 @@ namespace FinabitAPI.Controllers
                 PartnersType type = new PartnersType();
                 type.ID = 2;
                 newPartner.PartnerType = type;
-                PartnerRepository dalPartner = new PartnerRepository();
+                PartnerRepository dalPartner = new PartnerRepository(_dbAccess);
                 dalPartner.Insert(newPartner);
 
 

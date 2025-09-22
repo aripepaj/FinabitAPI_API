@@ -10,6 +10,15 @@ namespace FinabitAPI.Repository
     public class ItemRepository
     {
 
+        private readonly DBAccess _dbAccess;
+
+        public ItemRepository(DBAccess dbAccess)
+        {
+            _dbAccess = dbAccess;
+        }
+
+        private SqlConnection GetConnection() => _dbAccess.GetConnection();
+
         //Gjirafa
         public static List<ItemsGjirafa> SelectAllGjirafa()
         {
@@ -146,5 +155,49 @@ namespace FinabitAPI.Repository
 
             return specs;
         }
+
+        public List<DistinctItemNameDto> GetDistinctItemNames(string itemId = "", string itemName = "")
+        {
+            var results = new List<DistinctItemNameDto>();
+
+            using (SqlConnection cnn = GlobalRepository.GetConnection())
+            using (SqlCommand cmd = new SqlCommand("dbo.spGeDistinctItyemNames_API", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? string.Empty });
+                cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? string.Empty });
+
+                try
+                {
+                    cnn.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                    {
+                        if (!dr.HasRows) return results;
+
+                        int oDetailsType = dr.GetOrdinal("DetailsType");
+                        int oItemID = dr.GetOrdinal("ItemID");
+                        int oDescription = dr.GetOrdinal("Description");
+                        int oItemName = dr.GetOrdinal("ItemName");
+
+                        while (dr.Read())
+                        {
+                            results.Add(new DistinctItemNameDto
+                            {
+                                DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
+                                ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
+                                Description = dr.IsDBNull(oDescription) ? null : dr.GetString(oDescription),
+                                ItemName = dr.IsDBNull(oItemName) ? null : dr.GetString(oItemName)
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // TODO: log ex
+                }
+            }
+
+            return results;
+        }
+        }
     }
-}

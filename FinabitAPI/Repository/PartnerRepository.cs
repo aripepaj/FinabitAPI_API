@@ -7,15 +7,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace AutoBit_WebInvoices.Models
 {
-    public class ProgramInitializer
-    {
-        public static void InitializeGlobalRepository(IConfiguration configuration)
-        {
-            GlobalRepository.Initialize(configuration);
-        }
-    }
     public class PartnerRepository
     {
+        private readonly DBAccess _dbAccess; 
+        public PartnerRepository(DBAccess dbAccess) { _dbAccess = dbAccess; }
+
         public void Insert(Partner cls)
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -910,7 +906,6 @@ namespace AutoBit_WebInvoices.Models
                         cls.BankAccount = Convert.ToString(dr["BankAccount"]);
                         cls.DiscountPercent = dr["DiscountPercent"] == DBNull.Value ? 0 : decimal.Parse(dr["DiscountPercent"].ToString());
                         cls.PIN = dr["PIN"] == DBNull.Value ? "" : Convert.ToString(dr["PIN"]);
-                        cls.LUB = dr["LUB"] == DBNull.Value ? 0 : int.Parse(dr["LUB"].ToString());
                         cls.PriceMenuID = dr["PriceMenuID"] == DBNull.Value ? 0 : int.Parse(dr["PriceMenuID"].ToString());
 
                         break;
@@ -1478,9 +1473,9 @@ namespace AutoBit_WebInvoices.Models
         public List<PartnerModel> GetPartners(int partnerTypeID = 2, string partnerName = "%", string partnerGroup = "%", string partnerCategory = "%", string placeName = "%", string stateName = "%")
         {
             var partners = new List<PartnerModel>();
-            SqlConnection cnn = GlobalRepository.GetConnection();
-            SqlCommand cmd = new SqlCommand("spGetPartners_API", cnn);
-            cmd.CommandType = CommandType.StoredProcedure;
+            // Prefer tenant-aware DBAccess; fallback to GlobalRepository for legacy paths
+            using var cnn = _dbAccess != null ? _dbAccess.GetConnection() : GlobalRepository.GetConnection();
+            using var cmd = new SqlCommand("spGetPartners_API", cnn) { CommandType = CommandType.StoredProcedure };
 
             cmd.Parameters.Add(new SqlParameter("@PartnerTypeID", SqlDbType.Int) { Value = partnerTypeID });
             cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = partnerName });
@@ -1488,40 +1483,169 @@ namespace AutoBit_WebInvoices.Models
             cmd.Parameters.Add(new SqlParameter("@PartnerCategory", SqlDbType.NVarChar, 200) { Value = partnerCategory });
             cmd.Parameters.Add(new SqlParameter("@PlaceName", SqlDbType.NVarChar, 200) { Value = placeName });
             cmd.Parameters.Add(new SqlParameter("@StateName", SqlDbType.NVarChar, 200) { Value = stateName });
+            try
+            {
+                cnn.Open();
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    partners.Add(new PartnerModel
+                    {
+                        PartnerID = reader["PartnerID"] == DBNull.Value ? 0 : (int)reader["PartnerID"],
+                        PartnerName = reader["PartnerName"]?.ToString(),
+                        FiscalNo = reader["FiscalNo"]?.ToString(),
+                        BusinessNo = reader["BusinessNo"]?.ToString(),
+                        Address = reader["Address"]?.ToString(),
+                        Email = reader["Email"]?.ToString(),
+                        PlaceName = reader["PlaceName"]?.ToString(),
+                        StateName = reader["StateName"]?.ToString(),
+                        Group = reader["Group"]?.ToString(),
+                        Category = reader["Category"]?.ToString(),
+                        DueDays = reader["DueDays"] == DBNull.Value ? 0 : Convert.ToInt32(reader["DueDays"]),
+                        DueValueMaximum = reader["DueValueMaximum"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValueMaximum"]),
+                        DueValue = reader["DueValue"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValue"])
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // optionally log ex.Message; returning empty list keeps API stable
+            }
+            return partners;
+        }
+
+        public (int inserted,int failed,string error) ImportPartners(List<PartnerBatchItem> partners)
+        {
+            if (partners == null || partners.Count == 0) return (0,0,null);
+            var dt = new DataTable();
+            dt.Columns.Add("PartnerName", typeof(string));
+            dt.Columns.Add("Type", typeof(string));
+            dt.Columns.Add("Account", typeof(string));
+            dt.Columns.Add("PartnerGroup", typeof(string));
+            dt.Columns.Add("PartnerCategory", typeof(string));
+            dt.Columns.Add("StateID", typeof(string));
+            dt.Columns.Add("City", typeof(string));
+            dt.Columns.Add("Region", typeof(string));
+            dt.Columns.Add("Tel1", typeof(string));
+            dt.Columns.Add("Tel2", typeof(string));
+            dt.Columns.Add("Email", typeof(string));
+            dt.Columns.Add("FiscalNo", typeof(string));
+            dt.Columns.Add("BussinesNo", typeof(string));
+            dt.Columns.Add("VatNo", typeof(string));
+            dt.Columns.Add("DiscountPercent", typeof(decimal));
+            dt.Columns.Add("ItemID", typeof(string));
+            dt.Columns.Add("Adress", typeof(string));
+            dt.Columns.Add("ContactPerson", typeof(string));
+
+            foreach (var p in partners)
+            {
+                dt.Rows.Add(p.PartnerName ?? string.Empty,
+                    p.Type ?? string.Empty,
+                    p.Account ?? string.Empty,
+                    p.PartnerGroup ?? string.Empty,
+                    p.PartnerCategory ?? string.Empty,
+                    p.StateID ?? string.Empty,
+                    p.City ?? string.Empty,
+                    p.Region ?? string.Empty,
+                    p.Tel1 ?? string.Empty,
+                    p.Tel2 ?? string.Empty,
+                    p.Email ?? string.Empty,
+                    p.FiscalNo ?? string.Empty,
+                    p.BussinesNo ?? string.Empty,
+                    p.VatNo ?? string.Empty,
+                    p.DiscountPercent,
+                    p.ItemID ?? string.Empty,
+                    p.Adress ?? string.Empty,
+                    p.ContactPerson ?? string.Empty);
+            }
+            int inserted = 0; string error = null;
+            try
+            {
+                using var cnn = _dbAccess.GetConnection();
+                using var cmd = new SqlCommand("spImportPartners", cnn) { CommandType = CommandType.StoredProcedure };
+                var tvp = new SqlParameter("@ImportPartners", SqlDbType.Structured)
+                {
+                    TypeName = "dbo.ImportPartners",  
+                    Value = dt
+                };
+                cmd.Parameters.Add(tvp);
+                cnn.Open();
+                cmd.ExecuteNonQuery();
+                cnn.Close();
+                inserted = partners.Count;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            return (inserted, inserted == partners.Count ? 0 : partners.Count - inserted, error);
+        }
+
+        public int PartnerExistsAdvanced(
+                int? partnerId = null,
+                string partnerName = null,
+                string email = null,
+                string businessNo = null,
+                string fiscalNo = null)
+        {
+            using var cnn = _dbAccess != null ? _dbAccess.GetConnection() : GlobalRepository.GetConnection();
+            using var cmd = new SqlCommand("dbo.spPartnersAdvancedExists_API", cnn) { CommandType = CommandType.StoredProcedure };
+
+            cmd.Parameters.Add(new SqlParameter("@PartnerID", SqlDbType.Int) { Value = (object?)partnerId ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = (object?)partnerName ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@Email", SqlDbType.NVarChar, 200) { Value = (object?)email ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@BusinessNo", SqlDbType.NVarChar, 200) { Value = (object?)businessNo ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@FiscalNo", SqlDbType.NVarChar, 200) { Value = (object?)fiscalNo ?? DBNull.Value });
 
             try
             {
                 cnn.Open();
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        partners.Add(new PartnerModel
-                        {
-                            PartnerID = reader["PartnerID"] == DBNull.Value ? 0 : (int)reader["PartnerID"],
-                            PartnerName = reader["PartnerName"]?.ToString(),
-                            FiscalNo = reader["FiscalNo"]?.ToString(),
-                            BusinessNo = reader["BusinessNo"]?.ToString(),
-                            Address = reader["Address"]?.ToString(),
-                            Email = reader["Email"]?.ToString(),
-                            PlaceName = reader["PlaceName"]?.ToString(),
-                            StateName = reader["StateName"]?.ToString(),
-                            Group = reader["Group"]?.ToString(),
-                            Category = reader["Category"]?.ToString(),
-                            DueDays = reader["DueDays"] == DBNull.Value ? 0 : Convert.ToInt32(reader["DueDays"]),
-                            DueValueMaximum = reader["DueValueMaximum"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValueMaximum"]),
-                            DueValue = reader["DueValue"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DueValue"])
-                        });
-                    }
-                }
-                cnn.Close();
+                var result = cmd.ExecuteScalar();
+                return (result == null || result == DBNull.Value) ? 0 : Convert.ToInt32(result);
             }
-            catch (Exception ex)
+            catch
             {
-                string exp = ex.Message;
-                cnn.Close();
+                // TODO: log
+                return 0;
             }
-            return partners;
+            finally
+            {
+                if (cnn.State != ConnectionState.Closed) cnn.Close();
+            }
+        }
+
+        public async Task<int> PartnerExistsAdvancedAsync(
+            int? partnerId = null,
+            string partnerName = null,
+            string email = null,
+            string businessNo = null,
+            string fiscalNo = null,
+            CancellationToken cancellationToken = default)
+        {
+            await using var cnn = _dbAccess != null ? _dbAccess.GetConnection() : GlobalRepository.GetConnection();
+            await using var cmd = new SqlCommand("dbo.spPartnersAdvancedExists_API", cnn) { CommandType = CommandType.StoredProcedure };
+
+            cmd.Parameters.Add(new SqlParameter("@PartnerID", SqlDbType.Int) { Value = (object?)partnerId ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = (object?)partnerName ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@Email", SqlDbType.NVarChar, 200) { Value = (object?)email ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@BusinessNo", SqlDbType.NVarChar, 200) { Value = (object?)businessNo ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@FiscalNo", SqlDbType.NVarChar, 200) { Value = (object?)fiscalNo ?? DBNull.Value });
+
+            try
+            {
+                await cnn.OpenAsync(cancellationToken);
+                var result = await cmd.ExecuteScalarAsync(cancellationToken);
+                return (result == null || result == DBNull.Value) ? 0 : Convert.ToInt32(result);
+            }
+            catch
+            {
+                // TODO: log
+                return 0;
+            }
+            finally
+            {
+                if (cnn.State != ConnectionState.Closed) cnn.Close();
+            }
         }
     }
 }

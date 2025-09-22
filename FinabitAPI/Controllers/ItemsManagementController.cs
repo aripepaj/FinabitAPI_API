@@ -1,0 +1,148 @@
+using Microsoft.AspNetCore.Mvc;
+using FinabitAPI.Utilis;
+using AutoBit_WebInvoices.Models;
+using Finabit_API.Models; // For ItemsLookup and CreateItem request/response models
+using System.Collections.Generic;
+using System.Linq;
+using FinabitAPI.Repository;
+
+namespace FinabitAPI.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ItemsManagementController : ControllerBase
+    {
+        private readonly DBAccess _dbAccess;
+        private readonly ItemsMasterImportRepository _importRepo;
+        private readonly ItemRepository _itemRepository; 
+
+        public ItemsManagementController(DBAccess dbAccess, ItemRepository itemRepository, ItemsMasterImportRepository importRepo) 
+        {
+            _dbAccess = dbAccess;
+            _itemRepository = itemRepository;
+            _importRepo = importRepo;
+        }
+
+        [HttpPost("CreateNewItem")]
+        public ActionResult<CreateItemResponse> CreateNewItem([FromBody] CreateItemRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ItemID) || string.IsNullOrWhiteSpace(request.ItemName))
+            {
+                return BadRequest("ItemID and ItemName are required");
+            }
+            var response = new CreateItemResponse
+            {
+                ItemID = request.ItemID,
+                ErrorID = 0,
+                ErrorDescription = string.Empty
+            };
+            return Created($"api/ItemsManagement/{request.ItemID}", response);
+        }
+
+        [HttpPost("ImportItemsMaster")]
+        public async Task<ActionResult<ImportItemsMasterResponse>> ImportItemsMaster([FromBody] ImportItemsMasterRequest request, [FromQuery] int newTransactionId)
+        {
+            if (request?.Items == null || request.Items.Count == 0)
+                return BadRequest("Items payload required");
+
+            var (inserted, error) = await _importRepo.ImportItemsAsync(request.Items, newTransactionId);
+            var resp = new ImportItemsMasterResponse { Inserted = inserted, Error = error };
+            if (!string.IsNullOrEmpty(error))
+                return StatusCode(500, resp);
+
+            return Ok(resp);
+        }
+
+        [HttpGet("PosItems")] 
+        public ActionResult<List<ItemsLookup>> GetPosItems([FromQuery] int departmentId, [FromQuery] int priceMenuId = 0)
+        {
+            var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId);
+            return Ok(list);
+        }
+
+        [HttpGet("{itemId}")]
+        public ActionResult<ItemsLookup> GetItem(string itemId, [FromQuery] int departmentId, [FromQuery] int priceMenuId = 0)
+        {
+            var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
+            var item = list.FirstOrDefault(i => i.ItemID == itemId);
+            if (item == null) return NotFound();
+            return Ok(item);
+        }
+
+        [HttpGet("exists")]
+        public ActionResult<ItemExistenceResponse> Exists([
+            FromQuery] int departmentId,
+            [FromQuery] string itemId = null,
+            [FromQuery] string name = null,
+            [FromQuery] string barcode = null)
+        {
+            if (departmentId <= 0) return BadRequest("departmentId required");
+            if (string.IsNullOrWhiteSpace(itemId) && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(barcode))
+                return BadRequest("Provide at least one of itemId, name or barcode");
+
+            int foundId = _dbAccess.ItemsAdvancedExists(departmentId, itemId, name, barcode);
+            return Ok(new ItemExistenceResponse { Exists = foundId > 0, ItemID = itemId });
+        }
+
+        [HttpGet("Search")]
+        public ActionResult<PagedResult<ItemsLookup>> Search(
+            [FromQuery] int departmentId,
+            [FromQuery] int priceMenuId = 0,
+            [FromQuery] string itemName = null,
+            [FromQuery] string barcode = null,
+            [FromQuery] string itemGroup = null,
+            [FromQuery] bool? active = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 50)
+        {
+            if (departmentId <= 0) return BadRequest("departmentId is required");
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0 || pageSize > 500) pageSize = 50;
+
+            var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
+            var query = list.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(itemName))
+            {
+                var lower = itemName.ToLower();
+                query = query.Where(i => (i.ItemName ?? "").ToLower().Contains(lower));
+            }
+            if (!string.IsNullOrWhiteSpace(barcode))
+            {
+                var lower = barcode.ToLower();
+                query = query.Where(i => (i.Barcode ?? "").ToLower().Contains(lower));
+            }
+            if (!string.IsNullOrWhiteSpace(itemGroup))
+            {
+                var lower = itemGroup.ToLower();
+                query = query.Where(i => (i.ItemGroup ?? "").ToLower().Contains(lower));
+            }
+            if (active.HasValue)
+            {
+                // placeholder for Active flag filter
+            }
+
+            var total = query.Count();
+            var items = query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+            var result = new PagedResult<ItemsLookup>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = total,
+                TotalPages = (int)System.Math.Ceiling(total / (double)pageSize),
+                Items = items
+            };
+            return Ok(result);
+        }
+
+        [HttpGet("searchItem")]
+        public async Task<ActionResult<IReadOnlyList<DistinctItemNameDto>>> GetDistinctNames(
+            [FromQuery] string itemId = "",
+            [FromQuery] string itemName = "")
+        {
+            var data = await _dbAccess.GetDistinctItemNamesAsync(itemId, itemName);
+            return Ok(data);
+        }
+
+        }
+    }

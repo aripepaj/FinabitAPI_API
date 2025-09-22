@@ -1,5 +1,6 @@
 ﻿using AutoBit_WebInvoices.Models;
 using FinabitAPI.Models;
+using FinabitAPI.Repository;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -13,11 +14,13 @@ public class AccountController : ControllerBase
 {
     private readonly UsersRepository _dalUsers;
     private readonly IConfiguration _configuration;
+    private readonly IAccountRepository _repo;
 
-    public AccountController(UsersRepository dalUsers, IConfiguration configuration)
+    public AccountController(UsersRepository dalUsers, IConfiguration configuration, IAccountRepository repo)
     {
         _dalUsers = dalUsers;
         _configuration = configuration;
+        _repo = repo;
     }
 
     [AllowAnonymous]
@@ -59,5 +62,16 @@ public class AccountController : ControllerBase
         var username = User.Identity.Name;
         var userId = User.Claims.FirstOrDefault(c => c.Type == "UserID")?.Value;
         return Ok(new { username, userId });
+    }
+
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<AccountMatchDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AccountMatchDto>>> Search(
+            [FromQuery] string? accountId = null,
+            [FromQuery] string? accountName = null,
+            CancellationToken ct = default)
+    {
+        var data = await _repo.SearchAccountsAsync(accountId, accountName, ct);
+        return Ok(data);
     }
 }
