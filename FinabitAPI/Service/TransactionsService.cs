@@ -10,15 +10,18 @@ using System.Data.SqlClient;
 using System.Data;
 using System.Linq;
 using Finabit_API.Models;
+using FinabitAPI.Utilis;
 
 namespace FinabitAPI.Service
 {
     public class TransactionsService
     {
         public TransactionsRepository GlobaTran = new TransactionsRepository();
-        public TransactionsService(bool b)
+        private readonly DBAccess _dbAccess;
+        public TransactionsService(bool b, DBAccess dbAccess)
         {
-            GlobaTran = new TransactionsRepository(true);
+            _dbAccess = dbAccess;
+            GlobaTran = new TransactionsRepository(_dbAccess, true);
         }
         public TransactionsService()
         {

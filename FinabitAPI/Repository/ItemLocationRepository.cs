@@ -1,11 +1,21 @@
 ﻿using Finabit_API.Models;
-using System.Data;
+using FinabitAPI.Utilis;
 using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace AutoBit_WebInvoices.Models
 {
     public class ItemLocationRepository
     {
+
+        private readonly DBAccess _dbAccess;
+        public ItemLocationRepository(DBAccess dbAccess)
+        {
+            _dbAccess = dbAccess;
+        }
+
+        private SqlConnection GetConnection()
+            => _dbAccess != null ? _dbAccess.GetConnection() : GlobalRepository.GetConnection();
 
 
         #region Insert 
@@ -130,35 +140,29 @@ namespace AutoBit_WebInvoices.Models
 
         #region SelectAll 
 
-        public static List<ItemLocation> SelectAll()
+        public List<ItemLocation> SelectAll()
         {
-            List<ItemLocation> clsList = new List<ItemLocation>();
-            SqlConnection cnn = GlobalRepository.GetConnection();
-            SqlCommand cmd = new SqlCommand("spItemLocationList", cnn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            try
-            {
-                cnn.Open();
+            var list = new List<ItemLocation>();
 
-                SqlDataReader dr = cmd.ExecuteReader();
-                if (dr.HasRows)
-                {
-                    while (dr.Read())
-                    {
-                        ItemLocation cls = new ItemLocation();
-                        cls.ID = Convert.ToInt32(dr["ID"]);
-                        cls.Name = Convert.ToString(dr["Name"]);
-                        clsList.Add(cls);
-                    }
-                }
-                cnn.Close();
-            }
-            catch (Exception ex)
+            using var cnn = _dbAccess.GetConnection();
+            using var cmd = new SqlCommand("spItemLocationList", cnn)
             {
-                string exp = ex.Message;
-                cnn.Close();
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cnn.Open();
+            using var dr = cmd.ExecuteReader();
+
+            while (dr.Read())
+            {
+                list.Add(new ItemLocation
+                {
+                    ID = dr.GetInt32(dr.GetOrdinal("ID")),
+                    Name = dr["Name"].ToString()
+                });
             }
-            return clsList;
+
+            return list;
         }
 
         #endregion

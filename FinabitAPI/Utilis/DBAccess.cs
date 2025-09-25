@@ -2138,6 +2138,60 @@ namespace FinabitAPI.Utilis
             return foundId;
         }
 
+        public async Task<List<ItemExistenceBatchResponse>> ItemsAdvancedExistsBatchAsync(
+    int departmentId, IEnumerable<ItemExistenceProbe> items, CancellationToken ct = default)
+        {
+            var results = new List<ItemExistenceBatchResponse>();
+
+            using var cnn = GetConnection();
+            using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            var pDept = cmd.Parameters.Add("@DepartmentID", SqlDbType.Int);
+            pDept.Value = departmentId;
+
+            var pItemID = cmd.Parameters.Add("@ItemID", SqlDbType.NVarChar, 200);
+            var pItemName = cmd.Parameters.Add("@ItemName", SqlDbType.NVarChar, 200);
+            var pBarcode = cmd.Parameters.Add("@Barcode", SqlDbType.NVarChar, 200);
+
+            await cnn.OpenAsync(ct).ConfigureAwait(false);
+
+            foreach (var x in items)
+            {
+                pItemID.Value = (object?)x.ItemID ?? DBNull.Value;
+                pItemName.Value = (object?)x.Name ?? DBNull.Value;
+                pBarcode.Value = (object?)x.Barcode ?? DBNull.Value;
+
+                int foundId = 0;
+                try
+                {
+                    var ob = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                    if (ob != null && ob != DBNull.Value)
+                        foundId = Convert.ToInt32(ob);
+                }
+                catch
+                {
+                    foundId = 0;
+                }
+
+                results.Add(new ItemExistenceBatchResponse
+                {
+                    Index = x.Index,
+                    ItemID = x.ItemID,
+                    Name = x.Name,
+                    Barcode = x.Barcode,
+                    Exists = foundId > 0,
+                    FoundID = foundId
+                });
+            }
+
+            results.Sort((a, b) => a.Index.CompareTo(b.Index));
+            return results;
+        }
+
         public async Task<IReadOnlyList<DistinctItemNameDto>> GetDistinctItemNamesAsync(
      string itemId = "",
      string itemName = "",
@@ -2196,5 +2250,294 @@ namespace FinabitAPI.Utilis
             return results;
         }
 
+        // In your DbAccess class (_dbAccess)
+        public async Task<TransactionDetail> SelectTransactionDetailByIDAsync(
+            int id, CancellationToken ct = default)
+        {
+            using (var cnn = GetConnection())
+            using (var cmd = new SqlCommand("spTransactionsDetailsByID", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 0;
+                cmd.Parameters.Add(new SqlParameter("@ID", SqlDbType.Int) { Value = id });
+
+                await cnn.OpenAsync(ct).ConfigureAwait(false);
+                using (var dr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                {
+                    if (await dr.ReadAsync(ct).ConfigureAwait(false))
+                        return MapTransactionDetail(dr);   
+                }
+            }
+            return null;
+        }
+
+        // Safe: returns default if the column doesn't exist OR is null
+        private static T GetVal<T>(IDataRecord r, string col, T def = default!)
+        {
+            int i;
+            try { i = r.GetOrdinal(col); } catch { return def; }
+            if (i < 0 || r.IsDBNull(i)) return def;
+
+            var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+            var value = r.GetValue(i);
+
+            // Handles enums and numeric conversions nicely
+            if (targetType.IsEnum) return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
+            return (T)Convert.ChangeType(value, targetType);
+        }
+
+        // Try multiple column names; returns the first that exists and is not null
+        private static T GetAny<T>(IDataRecord r, T def, params string[] cols)
+        {
+            foreach (var col in cols)
+            {
+                int i;
+                try { i = r.GetOrdinal(col); } catch { continue; }
+                if (i >= 0 && !r.IsDBNull(i))
+                {
+                    var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+                    var value = r.GetValue(i);
+                    if (targetType.IsEnum) return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
+                    return (T)Convert.ChangeType(value, targetType);
+                }
+            }
+            return def;
+        }
+
+        private static string GetAnyNonEmpty(IDataRecord r, string def, params string[] cols)
+        {
+            foreach (var col in cols)
+            {
+                int i;
+                try { i = r.GetOrdinal(col); } catch { continue; }
+                if (i >= 0 && !r.IsDBNull(i))
+                {
+                    var s = Convert.ToString(r.GetValue(i)) ?? "";
+                    if (!string.IsNullOrWhiteSpace(s))
+                        return s;
+                }
+            }
+            return def;
+        }
+
+
+        private TransactionDetail MapTransactionDetail(IDataRecord dr)
+        {
+            return new TransactionDetail
+            {
+                ID = GetVal<int>(dr, "ID"),
+                TransactionID = GetVal<int>(dr, "TransactionID"),
+                DetailsType = GetVal<int>(dr, "DetailsType"),
+                ItemID = GetVal<string>(dr, "ItemID", ""),
+                ItemName = GetVal<string>(dr, "Item", ""),
+                Account = GetVal<string>(dr, "Account", ""),
+                CostPrice = GetVal<decimal>(dr, "CostPrice"),
+                Quantity = GetVal<decimal>(dr, "Quantity"),
+                Price = GetVal<decimal>(dr, "Price"),
+                Discount = GetVal<decimal>(dr, "Discount"),
+                PriceWithDiscount = GetVal<decimal>(dr, "PriceWithDiscount"),
+                Value = GetVal<decimal>(dr, "Value"),
+                PaymentID = GetVal<int>(dr, "PaymentID"),
+                PaymentValue = GetVal<decimal>(dr, "PaymentValue"),
+                PurchasedValue = GetVal<decimal>(dr, "PurchasedValue"),
+                StockQuantity = GetVal<decimal>(dr, "StockQuantity"),
+                ItemTransferFrom = GetVal<string>(dr, "ItemTransferFrom", ""),
+                InsBy = GetVal<int>(dr, "InsBy"),
+                InsDate = GetVal<DateTime>(dr, "InsDate"),
+                LUB = GetVal<int>(dr, "LUB"),
+                LUN = GetVal<int>(dr, "LUN"),
+                LUD = GetVal<DateTime>(dr, "LUD"),
+                UnitID = GetVal<int>(dr, "UnitID"),
+                Coefficient = GetVal<decimal>(dr, "Coefficient"),
+                Barcode = GetVal<string>(dr, "Barcode", ""),
+                UnitName = GetVal<string>(dr, "UnitName", ""),
+                VATValue = GetVal<decimal>(dr, "VATValue"),
+                StockLocationID = GetVal<int>(dr, "StockLocationID"),
+                StockLocationName = GetVal<string>(dr, "StockLocationName", ""),
+                SalesPrice = GetVal<decimal>(dr, "SalesPrice"),
+                SalesPrice2 = GetVal<decimal>(dr, "SalesPrice2"),
+                SalesPrice3 = GetVal<decimal>(dr, "SalesPrice3"),
+                VATPrice = GetVal<decimal>(dr, "VATPrice"),
+                OriginVATPrice = GetVal<decimal>(dr, "OriginVATPrice"),
+                OriginalPrice = GetVal<decimal>(dr, "OriginalPrice"),
+                IM7Price = GetVal<decimal>(dr, "IM7Price"),
+                OverValue = GetVal<decimal>(dr, "OverValue"),
+                DoganaValue = GetVal<decimal>(dr, "DoganaValue"),
+                VATPercent = GetVal<decimal>(dr, "VATPercent"),
+                AkcizaValue = GetVal<decimal>(dr, "AkcizaValue"),
+                ArticleID = GetVal<int>(dr, "ArticleID"),
+                ItemUnitName = GetVal<string>(dr, "ItemUnitName", ""),
+                ExpirationDate = GetVal<DateTime>(dr, "ExpirationDate"),
+                CompensationID = GetVal<int>(dr, "CompensationID"),
+                PDAItemName = GetVal<string>(dr, "PDAItemName", ""),
+                Marzhina = GetVal<decimal>(dr, "Marzhina"),
+                PriceFactor = GetVal<decimal>(dr, "PriceFactor"),
+                InvoiceValue = GetVal<decimal>(dr, "InvoiceValue"),
+                ItemType = GetVal<int>(dr, "ItemType"),
+                AccountCode = GetVal<string>(dr, "AccountCode", ""),
+                PriceWithoutVATUse = GetVal<decimal>(dr, "PriceWithoutVATUse"),
+                ItemCoef_Quantity = GetVal<decimal>(dr, "ItemCoef_Quantity"),
+                SubOrderID = GetVal<int>(dr, "SubOrderID"),
+                AssetID = GetVal<int>(dr, "AssetID"),
+                IsService = GetVal<int>(dr, "IsService") == 1,
+                IsInAction = GetVal<int>(dr, "IsInAction"),
+                SubOrderReceived = GetVal<int>(dr, "SubOrderReceived"),
+                Dim_1 = GetVal<decimal>(dr, "Dim_1"),
+                Dim_2 = GetVal<decimal>(dr, "Dim_2"),
+                Dim_3 = GetVal<decimal>(dr, "Dim_3"),
+                DepartmentID = GetVal<int>(dr, "DepartmentID"),
+                RowOrder = GetVal<int>(dr, "RowOrder"),
+                SerialNumber = GetVal<string>(dr, "SerialNumber", ""),
+                GuaranteeDate = GetVal<DateTime>(dr, "GuaranteeDate"),
+                POSProductionItemID = GetVal<int>(dr, "POSProductionItemID"),
+                TransactionDate = GetVal<DateTime>(dr, "TransactionDate"),
+                PositionNumber = GetVal<string>(dr, "PositionNumber", ""),
+                PLU = GetVal<string>(dr, "PLU", ""),
+                TargetPlanID = GetVal<int>(dr, "TargetPlanID"),
+                VATPriceWithOutRABAT = GetVal<decimal>(dr, "VATPriceWithOutRABAT"),
+                AllValueWithOutRabat = GetVal<decimal>(dr, "AllValueWithOutRabat"),
+                Memo = GetVal<string>(dr, "Memo", ""),
+                MinimalPrice = GetVal<decimal>(dr, "MinimalPrice"),
+                Origin = GetVal<string>(dr, "Origin", ""),
+                ProductionSerialaNumber = GetVal<string>(dr, "ProductionSerialaNumber", ""),
+                Quantity_Lot = GetVal<decimal>(dr, "Quantity_Lot"),
+                KM = GetVal<decimal>(dr, "KM"),
+                RBOOKID = GetVal<int>(dr, "RBOOKID"),
+                PriceMenuID = GetVal<int>(dr, "PriceMenuID"),
+                CustomField1 = GetVal<string>(dr, "CustomField1", ""),
+                CustomField2 = GetVal<string>(dr, "CustomField2", ""),
+                TaxAtSource = GetVal<decimal>(dr, "TaxAtSource"),
+                Coefficient4 = GetVal<decimal>(dr, "Coefficient4"),
+                RABAT2 = GetVal<decimal>(dr, "RABAT2"),
+                RABAT3 = GetVal<decimal>(dr, "RABAT3"),
+                Maximum = GetVal<decimal>(dr, "Maximum"),
+                CustomField3 = GetVal<string>(dr, "CustomField3", ""),
+                Barcode2 = GetVal<string>(dr, "Barcode2", ""),
+                ProjectName = GetVal<string>(dr, "ProjectName", ""),
+                QuantityBruto = GetVal<decimal>(dr, "QuantityBruto"),
+                CustomField4 = GetVal<string>(dr, "CustomField4", ""),
+                CustomField5 = GetVal<string>(dr, "CustomField5", ""),
+                CustomField6 = GetVal<string>(dr, "CustomField6", ""),
+                Memo2 = GetVal<string>(dr, "Memo2", ""),
+                NettoBruttoWeight = GetVal<decimal>(dr, "NettoBruttoWeight"),
+                BrutoWeight = GetVal<decimal>(dr, "BrutoWeight"),
+                NumriPaletave = GetVal<decimal>(dr, "NumriPaletave"),
+                PeshaPaletes = GetVal<decimal>(dr, "PeshaPaletes"),
+                PeshaKartonit = GetVal<decimal>(dr, "PeshaKartonit"),
+                PlateNo = GetVal<string>(dr, "PlateNo", ""),
+                TermsOfDelivery = GetVal<string>(dr, "TermsOfDelivery", ""),
+                CommodityCode = GetVal<string>(dr, "CommodityCode", ""),
+                DeliveryMethod = GetVal<string>(dr, "DeliveryMethod", ""),
+                ShipmentTerms = GetVal<string>(dr, "ShipmentTerms", ""),
+                CustOrderNo = GetVal<string>(dr, "CustOrderNo", ""),
+                Address = GetVal<string>(dr, "Address", ""),
+                ShippAddress = GetVal<string>(dr, "ShippAddress", ""),
+                Reference = GetVal<string>(dr, "Reference", ""),
+                SealNo = GetVal<string>(dr, "SealNo", ""),
+                ProductionSerialNumber_Det = GetVal<string>(dr, "ProductionSerialNumber_det", ""),
+                ExpirationDate_Det = GetVal<DateTime>(dr, "ExpirationDate_det"),
+                VleraPaTVSH18 = GetVal<decimal>(dr, "VleraPaTVSH18"),
+                VleraPaTVSH8 = GetVal<decimal>(dr, "VleraPaTVSH8"),
+                Prodhuesi = GetVal<string>(dr, "Prodhuesi", ""),
+                ItemGroup = GetVal<string>(dr, "ItemGroup", "")
+            };
+        }
+
+        public async Task<TransactionWithDetailsDto> GetTransactionWithDetails(
+            int transactionId, CancellationToken ct = default)
+        {
+            using var cnn = GetConnection();
+            using var cmd = new SqlCommand("dbo.spTransactionWithDetails_API", cnn)
+            { CommandType = CommandType.StoredProcedure, CommandTimeout = 0 };
+            cmd.Parameters.Add("@TransactionID", SqlDbType.Int).Value = transactionId;
+
+            await cnn.OpenAsync(ct).ConfigureAwait(false);
+            using var dr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+
+            Transactions header = null;
+            if (await dr.ReadAsync(ct).ConfigureAwait(false))
+                header = MapTransaction(dr);
+            if (header == null) return null;
+
+            var details = new List<TransactionDetail>();
+            if (await dr.NextResultAsync(ct).ConfigureAwait(false))
+            {
+                while (await dr.ReadAsync(ct).ConfigureAwait(false))
+                    details.Add(MapTransactionDetail(dr)); 
+            }
+
+            return new TransactionWithDetailsDto { Header = header, Details = details };
+        }
+
+        private Transactions MapTransaction(IDataRecord dr)
+        {
+            var cls = new Transactions();
+            cls.ID = GetVal<int>(dr, "ID");
+            cls.TransactionTypeID = GetVal<int>(dr, "TransactionTypeID");
+            cls.TransactionDate = GetVal<DateTime>(dr, "TransactionDate");
+            cls.InvoiceDate = GetVal<DateTime>(dr, "InvoiceDate");
+            cls.DueDate = GetVal<DateTime>(dr, "DueDate");
+            cls.TransactionNo = GetVal<string>(dr, "TransactionNo", "");
+            cls.InvoiceNo = GetVal<string>(dr, "InvoiceNo", "");
+            cls.DUDNo = GetVal<string>(dr, "DUDNo", "");
+            cls.VAT = GetVal<bool>(dr, "VAT", false);
+            cls.InPL = GetVal<bool>(dr, "InPL", false);
+            cls.PartnerID = GetVal<int>(dr, "PartnerID");
+            cls.PartnersAddress = GetVal<string>(dr, "PartnersAddress", "");
+            cls.PartnersContactPerson = GetVal<string>(dr, "PartnersContactPerson", "");
+            cls.PartnersPhoneNo = GetVal<string>(dr, "PartnersPhoneNo", "");
+            cls.DepartmentID = GetVal<int>(dr, "DepartmentID");
+            cls.DriverID = GetVal<int>(dr, "DriverID", -1);
+            cls.PlateNo = GetVal<string>(dr, "PlateNoDriver", "");
+            cls.InternalDepartmentID = GetVal<int>(dr, "InternalDepartmentID", 0);
+            cls.EmpID = GetVal<int>(dr, "EmpID");
+            cls.CashAccount = GetVal<string>(dr, "CashAccount", "");
+            cls.Import = GetVal<bool>(dr, "Import", false);
+            cls.Value = GetVal<decimal>(dr, "Value");
+            cls.VATValue = GetVal<decimal>(dr, "VATValue");
+            cls.AllValue = GetVal<decimal>(dr, "AllValue");
+            cls.PaidValue = GetVal<decimal>(dr, "PaidValue");
+            cls.VATPercent = GetVal<decimal>(dr, "VATPercent");
+            cls.VATPercentID = GetVal<int>(dr, "VATPercentID");
+            cls.Memo = GetVal<string>(dr, "Memo", "");
+            cls.Reference = GetVal<string>(dr, "Reference", "");
+            cls.Links = GetVal<string>(dr, "Links", "");
+            cls.Active = GetVal<bool>(dr, "Active", true);
+            cls.JournalStatus = GetVal<bool>(dr, "JournalStatus", false);
+            cls.InsBy = GetVal<int>(dr, "InsBy");
+            cls.InsDate = GetVal<DateTime>(dr, "InsDate");
+            cls.LUB = GetVal<int>(dr, "LUB");
+            cls.LUN = GetVal<int>(dr, "LUN");
+            cls.LUD = GetVal<DateTime>(dr, "LUD");
+            cls.Transport = GetVal<decimal>(dr, "Transport");
+            cls.Dogana = GetVal<decimal>(dr, "Dogana");
+            cls.Akciza = GetVal<decimal>(dr, "Akciza");
+            cls.RABAT = GetVal<decimal>(dr, "RABAT");
+            cls.ReferenceID = GetVal<int>(dr, "ReferenceID");
+            cls.Commission1 = GetVal<int>(dr, "Commission1", 0);
+            cls.Commission2 = GetVal<int>(dr, "Commission2", 0);
+            cls.Commission3 = GetVal<int>(dr, "Commission3", 0);
+            cls.SuficitAccount = GetVal<string>(dr, "SuficitAccount", "");
+            cls.DeficitAccount = GetVal<string>(dr, "DeficitAccount", "");
+            cls.VehicleID = GetVal<int>(dr, "VehicleID", 0);
+            cls.ItemID = GetVal<string>(dr, "ItemID", "");
+            cls.Quantity = GetVal<decimal>(dr, "Quantity", 0);
+            cls.PartnerItemID = GetVal<string>(dr, "PartnerItemID", "");
+            cls.CurrencyID = GetVal<int>(dr, "CurrencyID", 0);
+            cls.CurrencyRate = GetVal<decimal>(dr, "CurrencyRate", 0);
+            cls.OverValue = GetVal<decimal>(dr, "OverValue", 0);
+            cls.Charges = GetVal<decimal>(dr, "Charges", 0);
+            cls.ContractID = GetVal<int>(dr, "ContractID");
+            cls.POSPaid = GetVal<bool>(dr, "POSPaid", false);
+            cls.HReservationID = GetVal<int>(dr, "HReservationID", 0);
+            cls.PaymentTypeID = GetVal<int>(dr, "PaymentTypeID", 0);
+            cls.PaymentTypeName = GetVal<string>(dr, "PaymentTypeName", "");
+            cls.CompanyID = GetVal<short>(dr, "CompanyID");
+            cls.Longitude = GetVal<decimal>(dr, "Longitude");
+            cls.Latitude = GetVal<decimal>(dr, "Latitude");
+            cls.CardID = GetVal<int>(dr, "CardID");
+            cls.CardBarcode = GetVal<string>(dr, "CardBarcode", "");
+            return cls;
+        }
     }
 }

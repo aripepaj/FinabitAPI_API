@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using FinabitAPI.Utilis;
 using AutoBit_WebInvoices.Models;
 using Finabit_API.Models; // For ItemsLookup and CreateItem request/response models
+using FinabitAPI.Models;
+using FinabitAPI.Repository;
+using FinabitAPI.Utilis;
+using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
-using FinabitAPI.Repository;
 
 namespace FinabitAPI.Controllers
 {
@@ -82,6 +83,27 @@ namespace FinabitAPI.Controllers
 
             int foundId = _dbAccess.ItemsAdvancedExists(departmentId, itemId, name, barcode);
             return Ok(new ItemExistenceResponse { Exists = foundId > 0, ItemID = itemId });
+        }
+
+        [HttpPost("exists/batch")]
+        public async Task<ActionResult<List<ItemExistenceBatchResponse>>> ExistsBatch(
+    [FromQuery] int departmentId,
+    [FromBody] List<ItemExistenceProbe> items,
+    CancellationToken ct)
+        {
+            if (departmentId <= 0) return BadRequest("departmentId required");
+            if (items == null || items.Count == 0) return BadRequest("Items required");
+
+            foreach (var it in items)
+            {
+                if (string.IsNullOrWhiteSpace(it.ItemID) &&
+                    string.IsNullOrWhiteSpace(it.Name) &&
+                    string.IsNullOrWhiteSpace(it.Barcode))
+                    return BadRequest($"Row Index {it.Index}: provide at least one of itemId, name or barcode.");
+            }
+
+            var res = await _dbAccess.ItemsAdvancedExistsBatchAsync(departmentId, items, ct);
+            return Ok(res);
         }
 
         [HttpGet("Search")]

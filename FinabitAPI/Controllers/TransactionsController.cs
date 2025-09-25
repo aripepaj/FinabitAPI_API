@@ -332,7 +332,7 @@ namespace FinabitAPI.Controllers
                 //Users_GetLoginUserByPIN(t.ErrorDescription);
             }
 
-            TransactionsService bllt = new TransactionsService(true);
+            TransactionsService bllt = new TransactionsService(true, _dbAccess);
             try
             {
                 //Users_GetLoginUserByPIN(t.Memo);
@@ -497,11 +497,11 @@ namespace FinabitAPI.Controllers
                 {
                     item.LocationID = matchedItem.LocationID;
                 }
-            } 
+            }
 
 
-
-            var printersForPOS = OptionsRepository.GetPrintersForPOS();
+            OptionsRepository optionsRepository = new OptionsRepository(_dbAccess);
+            var printersForPOS = optionsRepository.GetPrintersForPOS();
             var pattern = @"^Printeri \d+$";
             var filteredPrinters = printersForPOS
                 .Where(printer => Regex.IsMatch(printer.PrinterAlias, pattern))
@@ -616,9 +616,10 @@ namespace FinabitAPI.Controllers
                 }
             }
             string TableName = "table";// BLLTables.SelectByID(new BELayer.Tables() { ID = t.TableID }).TableName;
-            DataTable SDTable = GlobalRepository.ListSystemDataTable();
+            DataTable SDTable = GlobalRepository.ListSystemDataTable(_dbAccess);
 
-            List<ItemLocation> ILList = ItemLocationRepository.SelectAll();
+            ItemLocationRepository itemLocationRepository = new ItemLocationRepository(_dbAccess);
+            List<ItemLocation> ILList = itemLocationRepository.SelectAll();
             bool GenerateTranNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
             if (GenerateTranNo || String.IsNullOrEmpty(transaction.t.TransactionNo))
             {
@@ -703,7 +704,7 @@ namespace FinabitAPI.Controllers
             t.VATValue = Totals[1];
             t.AllValue = t.VATValue + (t.Value);
 
-            TransactionsService bllt = new TransactionsService(true);
+            TransactionsService bllt = new TransactionsService(true, _dbAccess);
             try
             {
                 t.ErrorID = bllt.Insert(t, false);
@@ -975,7 +976,8 @@ namespace FinabitAPI.Controllers
         [HttpGet("GetOptionsList")]
         public ActionResult<List<string>> GetOptionsList()
         {
-            return OptionsRepository.GetOptionsList();
+            OptionsRepository optionsRepository = new OptionsRepository(_dbAccess);
+            return optionsRepository.GetOptionsList();
         }
 
 
@@ -1019,7 +1021,7 @@ namespace FinabitAPI.Controllers
 
             TranCash.TranDetailsColl = GetDetailsForPayment(ThisTran, TranCash.ID, PaymentValue);
             TranCash.InsBy = 1;
-            TransactionsService bllt = new TransactionsService(true);
+            TransactionsService bllt = new TransactionsService(true, _dbAccess);
             bllt.Update(TranCash);
             if (bllt.ErrorID==0)
             {
@@ -1154,7 +1156,7 @@ namespace FinabitAPI.Controllers
         {
             int CashJournalPOSID = 0;
             Transactions t = GetCashTransaction(empid,departmentid);
-            TransactionsService bllt = new TransactionsService(true);
+            TransactionsService bllt = new TransactionsService(true, _dbAccess);
             bllt.Insert(t,false);
             if (bllt.ErrorID ==0)
             {
@@ -2552,6 +2554,18 @@ namespace FinabitAPI.Controllers
             return Ok(data);
         }
 
+        [HttpGet("TransactionsWithDetails")]
+        public async Task<IActionResult> GetTransactionWithDetails([FromQuery] int transactionId, CancellationToken ct = default)
+        {
+            if (transactionId <= 0) return BadRequest("Invalid transaction ID.");
+
+            var dto = await _dbAccess.GetTransactionWithDetails(transactionId, ct); 
+            if (dto == null) return NotFound($"Transaction {transactionId} not found.");
+
+            return Ok(dto);
+        }
+
+
         [HttpGet("IncomeStatement")]
         public async Task<IActionResult> GetIncomeStatement(
      [FromQuery] string fromDate,
@@ -2572,7 +2586,8 @@ namespace FinabitAPI.Controllers
         [HttpGet("options")]
         public void GetOptions()
         {
-            OptionsRepository.GetOptions();
+            OptionsRepository optionsRepository = new OptionsRepository(_dbAccess);
+            optionsRepository.GetOptions();
         }
         private List<TransactionsDetails> GetTranDetails(XMLTransactions t)
         {
@@ -2920,7 +2935,7 @@ namespace FinabitAPI.Controllers
             {
 
                 Transactions t = GetBankTransactionForJournal(cashaccount, Dep.CompanyID);
-                TransactionsService bllt = new TransactionsService(true);
+                TransactionsService bllt = new TransactionsService(true, _dbAccess);
                 try
                 {
                     bllt.Insert(t, false);
@@ -3257,6 +3272,23 @@ namespace FinabitAPI.Controllers
         {
             TransactionsService.UpdateIsPrintFiscalInvoiceAsTrueByTranID(TransactionID);
         }
+
+        [HttpGet("TransactionByID")]
+        public IActionResult GetTransactionByID([FromQuery] int id)
+        {
+            if (id <= 0)
+                return BadRequest("Invalid transaction ID.");
+
+            var cls = new Transactions { ID = id };
+            var transaction = _dbAccess.SelectTransactionByID(cls);
+
+            if (transaction == null)
+                return NotFound($"Transaction with ID {id} not found.");
+
+            return Ok(transaction);
+        }
+
+
 
         #region RaportetExtreamPica
         //public void PrintFiscalInvoice_GLOBAL(DataTable TranDet, string Pathi, string UserName, string Barcode, string TableName)

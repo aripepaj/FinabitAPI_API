@@ -4,9 +4,10 @@
 //-- Description:	DALGlobal
 //-- =============================================
 
-using System.Data;
+using FinabitAPI.Utilis;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using System.Data;
 
 namespace Finabit_API.Models
 {
@@ -200,6 +201,31 @@ namespace Finabit_API.Models
             }
             return data;
         }
+
+        public static DataTable ListSystemDataTable(DBAccess dbAccess)
+        {
+            var dt = new DataTable();
+
+            using var connection = dbAccess.GetConnection();
+            using var command = new SqlCommand("spSystemList", connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            try
+            {
+                connection.Open();
+                using var da = new SqlDataAdapter(command);
+                da.Fill(dt);
+            }
+            catch
+            {
+                // log if needed; return empty table on error
+            }
+
+            return dt;
+        }
+
         //public static int ErrorID { get; set; }
     }
 }

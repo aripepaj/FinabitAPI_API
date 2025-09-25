@@ -14,11 +14,26 @@ namespace Finabit_API.Models
         public int ErrorID = 0;
         public string ErrorDescription = "";
 
+        private readonly DBAccess? _dbAccess;
+        private bool _ownsConnection; 
+
+        private SqlConnection? cnnGlobal;
+        private SqlTransaction? tranGlobal;
+
         public TransactionsRepository() { }
 
-        public TransactionsRepository(bool Tran)
+        public TransactionsRepository(bool useGlobalTransaction)
         {
-            OpenGlobalConnection();
+            OpenGlobalConnection(); 
+        }
+
+        public TransactionsRepository(DBAccess dbAccess, bool useGlobalTransaction = true)
+        {
+            _dbAccess = dbAccess ?? throw new ArgumentNullException(nameof(dbAccess));
+            if (useGlobalTransaction)
+            {
+                OpenGlobalConnection();
+            }
         }
 
         #region Insert
@@ -3217,52 +3232,104 @@ namespace Finabit_API.Models
 
         #region GlobalConnection
 
-        public SqlConnection cnnGlobal = null;
-        public SqlTransaction tranGlobal = null;
-
         public void OpenGlobalConnection()
         {
-            cnnGlobal = new SqlConnection(GlobalAppData.ConnectionString + ";Connection Timeout=15");
-            int to = cnnGlobal.ConnectionTimeout;
-            if (cnnGlobal.State == ConnectionState.Closed)
-            {
-                cnnGlobal.Open();
-                tranGlobal = cnnGlobal.BeginTransaction();
-            }
+            if (cnnGlobal != null && cnnGlobal.State == ConnectionState.Open)
+                return; 
+
+            SqlConnection conn = _dbAccess != null
+                ? _dbAccess.GetConnection()
+                : GlobalRepository.GetConnection();
+
+            _ownsConnection = true;  
+            cnnGlobal = conn;
+
+            cnnGlobal.Open();
+
+            tranGlobal = cnnGlobal.BeginTransaction();
         }
 
         public void CloseGlobalConnection()
         {
-            if (cnnGlobal != null && cnnGlobal.State == ConnectionState.Open)
+            try
             {
-                if (this.ErrorID != 0)
+                if (cnnGlobal == null) return;
+
+                if (tranGlobal != null)
                 {
-                    tranGlobal.Rollback();
+                    try
+                    {
+                        if (ErrorID != 0)
+                            tranGlobal.Rollback();
+                        else
+                            tranGlobal.Commit();
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        tranGlobal.Dispose();
+                        tranGlobal = null;
+                    }
                 }
-                else
+
+                if (cnnGlobal.State != ConnectionState.Closed && _ownsConnection)
                 {
-                    tranGlobal.Commit();
+                    cnnGlobal.Close();
                 }
-                cnnGlobal.Close();
+            }
+            finally
+            {
+                if (_ownsConnection && cnnGlobal != null)
+                {
+                    cnnGlobal.Dispose();
+                }
+                cnnGlobal = null;
+                _ownsConnection = false;
             }
         }
 
         public SqlCommand SqlCommandForTran_SP(string cmdText)
         {
-            SqlCommand cmd = new SqlCommand(cmdText, cnnGlobal);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.CommandTimeout = 0;
-            cmd.Transaction = tranGlobal;
+            EnsureConnectionAndTransaction();
+            var cmd = new SqlCommand(cmdText, cnnGlobal!)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0,
+                Transaction = tranGlobal
+            };
             return cmd;
         }
 
         public SqlCommand SqlCommandForTran_Text(string cmdText)
         {
-            SqlCommand cmd = new SqlCommand(cmdText, cnnGlobal);
-            cmd.CommandType = CommandType.Text;
-            cmd.CommandTimeout = 0;
-            cmd.Transaction = tranGlobal;
+            EnsureConnectionAndTransaction();
+            var cmd = new SqlCommand(cmdText, cnnGlobal!)
+            {
+                CommandType = CommandType.Text,
+                CommandTimeout = 0,
+                Transaction = tranGlobal
+            };
             return cmd;
+        }
+
+        private void EnsureConnectionAndTransaction()
+        {
+            if (cnnGlobal == null || cnnGlobal.State != ConnectionState.Open)
+            {
+                OpenGlobalConnection();
+            }
+
+            if (tranGlobal == null)
+            {
+                tranGlobal = cnnGlobal!.BeginTransaction();
+            }
+        }
+
+        public void Dispose()
+        {
+            CloseGlobalConnection();
         }
 
         #endregion

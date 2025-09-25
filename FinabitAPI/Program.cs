@@ -1,11 +1,12 @@
-﻿using System.IO;
+﻿using AutoBit_WebInvoices.Models;
+using Finabit_API.Models;
+using FinabitAPI.Multitenancy;
+using FinabitAPI.Repository;
+using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
-using AutoBit_WebInvoices.Models;
-using FinabitAPI.Multitenancy;
-using FinabitAPI.Utilis;
-using FinabitAPI.Repository;
+using System.IO;
 
 var baseDir = AppContext.BaseDirectory;        
 Directory.SetCurrentDirectory(baseDir);          
@@ -49,6 +50,8 @@ builder.Services.AddScoped<ItemRepository>();
 builder.Services.AddScoped<PartnerRepository>();
 builder.Services.AddScoped<IAccountRepository,AccountRepository>();
 builder.Services.AddScoped<ItemsMasterImportRepository>();
+builder.Services.AddScoped<OptionsRepository>();
+builder.Services.AddScoped<TransactionsRepository>();
 builder.Services.AddControllers();
 
 builder.Services
