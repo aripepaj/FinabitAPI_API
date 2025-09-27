@@ -74,4 +74,53 @@ public class AccountController : ControllerBase
         var data = await _repo.SearchAccountsAsync(accountId, accountName, ct);
         return Ok(data);
     }
+
+    [HttpPost("searchBatch")]
+    [ProducesResponseType(typeof(IReadOnlyList<AccountProbeResult>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AccountProbeResult>>> SearchBatch(
+    [FromBody] IReadOnlyList<AccountProbe> probes,
+    CancellationToken ct = default)
+    {
+        if (probes == null || probes.Count == 0)
+            return Ok(Array.Empty<AccountProbeResult>());
+
+        const int maxDegreeOfParallelism = 8; 
+        using var gate = new SemaphoreSlim(maxDegreeOfParallelism);
+
+        var tasks = probes.Select(async p =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                var rows = await _repo.SearchAccountsAsync(p.AccountId, p.AccountName, ct).ConfigureAwait(false);
+                return new AccountProbeResult
+                {
+                    Index = p.Index,
+                    AccountId = p.AccountId,
+                    AccountName = p.AccountName,
+                    Results = rows
+                };
+            }
+            catch
+            {
+                return new AccountProbeResult
+                {
+                    Index = p.Index,
+                    AccountId = p.AccountId,
+                    AccountName = p.AccountName,
+                    Results = Array.Empty<AccountMatchDto>()
+                };
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        var arr = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        var byIndex = arr.ToDictionary(x => x.Index);
+        var ordered = probes.Select(p => byIndex[p.Index]).ToList();
+        return Ok(ordered);
+    }
 }

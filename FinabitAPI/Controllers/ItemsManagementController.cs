@@ -166,5 +166,57 @@ namespace FinabitAPI.Controllers
             return Ok(data);
         }
 
+        [HttpPost("searchItemsBatch")]
+        public async Task<ActionResult<IReadOnlyList<DistinctItemProbeResult>>> SearchItemsBatch(
+     [FromBody] IReadOnlyList<DistinctItemProbe> probes,
+     CancellationToken cancellationToken)
+        {
+            if (probes == null || probes.Count == 0)
+                return Ok(Array.Empty<DistinctItemProbeResult>());
+
+            const int maxDegreeOfParallelism = 8;
+            using var gate = new SemaphoreSlim(maxDegreeOfParallelism);
+
+            var tasks = probes.Select(async p =>
+            {
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var results = await _dbAccess
+                        .GetDistinctItemNamesAsync(p.ItemId ?? "", p.ItemName ?? "", cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return new DistinctItemProbeResult
+                    {
+                        Index = p.Index,
+                        ItemId = p.ItemId,
+                        ItemName = p.ItemName,
+                        Results = results
+                    };
+                }
+                catch
+                {
+                    return new DistinctItemProbeResult
+                    {
+                        Index = p.Index,
+                        ItemId = p.ItemId,
+                        ItemName = p.ItemName,
+                        Results = Array.Empty<DistinctItemNameDto>()
+                    };
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            });
+
+            var resultsArr = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            var byIndex = resultsArr.ToDictionary(x => x.Index);
+            var ordered = probes.Select(p => byIndex[p.Index]).ToList();
+
+            return Ok(ordered);
         }
+
     }
+}
