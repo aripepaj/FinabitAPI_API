@@ -1243,6 +1243,68 @@ namespace FinabitAPI.Controllers
             return Ok(rows); // This is a "datatable-like" structure, but JSON-safe!
         }
 
+        [HttpGet("DepartmentsListByName")]
+        public IActionResult DepartmentsListByName([FromQuery] string name = null)
+        {
+            var dt = _dbAccess.DepartmentsListByName(name);
+            var rows = ToTableRows(dt);
+            return Ok(rows);
+        }
+
+        [HttpPost("ContractsDocsImport")]
+        [RequestSizeLimit(1024L * 1024L * 200L)]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> ContractsDocsImport([FromForm] ImportContractsDocsForm form)
+        {
+            if (form.Files == null || form.Files.Count == 0)
+                return BadRequest("No files uploaded.");
+
+            if (form.DocTypes != null && form.DocTypes.Count != form.Files.Count)
+                return BadRequest("DocTypes count must match Files count.");
+            if (form.Descriptions != null && form.Descriptions.Count != form.Files.Count)
+                return BadRequest("Descriptions count must match Files count.");
+
+            // Build the TVP DataTable to match dbo.ContractsDocs
+            var dt = new DataTable();
+            dt.Columns.Add("DossierID", typeof(int));
+            dt.Columns.Add("Images", typeof(byte[]));
+            dt.Columns.Add("DocType", typeof(int));
+            dt.Columns.Add("ExtensionPath", typeof(string));
+            dt.Columns.Add("Description", typeof(string));
+
+            for (int i = 0; i < form.Files.Count; i++)
+            {
+                var f = form.Files[i];
+                if (f?.Length <= 0) continue;
+
+                using var ms = new MemoryStream();
+                await f.CopyToAsync(ms);
+                var bytes = ms.ToArray();
+
+                var ext = Path.GetExtension(f.FileName)?.ToLowerInvariant() ?? "";
+                var desc = (form.Descriptions != null && i < form.Descriptions.Count && !string.IsNullOrWhiteSpace(form.Descriptions[i]))
+                           ? form.Descriptions[i]
+                           : f.FileName;
+
+                var docType = (form.DocTypes != null && i < form.DocTypes.Count)
+                              ? form.DocTypes[i]
+                              : (form.DocType ?? 0);
+
+                var row = dt.NewRow();
+                row["DossierID"] = form.DossierId;
+                row["Images"] = bytes;
+                row["DocType"] = docType;
+                row["ExtensionPath"] = ext;
+                row["Description"] = desc;
+                dt.Rows.Add(row);
+            }
+
+            // Call repository (no userId passed from the form; repo defaults to -1)
+            _dbAccess.ContractsDocsInsert(dt, form.ScanDocMode, form.DocNo, form.DocDate, form.SubjectName);
+
+            return Ok(new { inserted = dt.Rows.Count, dossierId = form.DossierId, mode = form.ScanDocMode });
+        }
+
         private List<Dictionary<string, object>> ToTableRows(DataTable dt)
         {
             var rows = new List<Dictionary<string, object>>();

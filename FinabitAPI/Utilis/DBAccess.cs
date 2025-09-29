@@ -1733,6 +1733,45 @@ namespace FinabitAPI.Utilis
 
         #endregion
 
+        public DataTable DepartmentsListByName(string search = null)
+        {
+            var dt = new DataTable();
+            using (SqlConnection cnn = GetConnection())
+            using (SqlCommand cmd = new SqlCommand("spDepartmentSearch_API", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@IsCombo", SqlDbType.Bit).Value = 0;
+                cmd.Parameters.Add("@Search", SqlDbType.NVarChar, 100).Value =
+                    string.IsNullOrWhiteSpace(search) ? (object)DBNull.Value : search;
+
+                cnn.Open();
+                using var da = new SqlDataAdapter(cmd);
+                da.Fill(dt);
+            }
+            return dt;
+        }
+
+        public void ContractsDocsInsert(DataTable dt, int scanDocMode, string docNo, DateTime? docDate, string subjectName, int userId = -1)
+        {
+            using (SqlConnection cnn = GetConnection())
+            using (SqlCommand cmd = new SqlCommand("dbo.spContractsDocsInsert", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                var pScanDoc = cmd.Parameters.Add("@ScanDoc", SqlDbType.Structured);
+                pScanDoc.TypeName = "dbo.ContractsDocs";        
+                pScanDoc.Value = dt ?? throw new ArgumentNullException(nameof(dt));
+
+                cmd.Parameters.Add("@ScanDocMODE", SqlDbType.Int).Value = scanDocMode;
+                cmd.Parameters.Add("@UserID", SqlDbType.Int).Value = userId;
+                cmd.Parameters.Add("@DocNo", SqlDbType.VarChar, 100).Value = (object?)docNo ?? DBNull.Value;
+                cmd.Parameters.Add("@DocDate", SqlDbType.SmallDateTime).Value = (object?)docDate ?? DBNull.Value;
+                cmd.Parameters.Add("@SubjectName", SqlDbType.NVarChar, 1000).Value = (object?)subjectName ?? DBNull.Value;
+
+                cnn.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
 
         public List<ItemsWeb> GetItemsWeb(int DepartmentID)
         {
