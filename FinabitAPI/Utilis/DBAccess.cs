@@ -1751,28 +1751,6 @@ namespace FinabitAPI.Utilis
             return dt;
         }
 
-        public void ContractsDocsInsert(DataTable dt, int scanDocMode, string docNo, DateTime? docDate, string subjectName, int userId = -1)
-        {
-            using (SqlConnection cnn = GetConnection())
-            using (SqlCommand cmd = new SqlCommand("dbo.spContractsDocsInsert", cnn))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-
-                var pScanDoc = cmd.Parameters.Add("@ScanDoc", SqlDbType.Structured);
-                pScanDoc.TypeName = "dbo.ContractsDocs";        
-                pScanDoc.Value = dt ?? throw new ArgumentNullException(nameof(dt));
-
-                cmd.Parameters.Add("@ScanDocMODE", SqlDbType.Int).Value = scanDocMode;
-                cmd.Parameters.Add("@UserID", SqlDbType.Int).Value = userId;
-                cmd.Parameters.Add("@DocNo", SqlDbType.VarChar, 100).Value = (object?)docNo ?? DBNull.Value;
-                cmd.Parameters.Add("@DocDate", SqlDbType.SmallDateTime).Value = (object?)docDate ?? DBNull.Value;
-                cmd.Parameters.Add("@SubjectName", SqlDbType.NVarChar, 1000).Value = (object?)subjectName ?? DBNull.Value;
-
-                cnn.Open();
-                cmd.ExecuteNonQuery();
-            }
-        }
-
         public List<ItemsWeb> GetItemsWeb(int DepartmentID)
         {
             List<ItemsWeb> clsList = new List<ItemsWeb>();
@@ -2149,36 +2127,75 @@ namespace FinabitAPI.Utilis
 
         public int ItemsAdvancedExists(int departmentId, string itemId = null, string itemName = null, string barcode = null)
         {
-            int foundId = 0;
-            using (SqlConnection cnn = GetConnection())
+            using var cnn = GetConnection();
+            using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
             {
-                SqlCommand cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
-                {
-                    CommandType = CommandType.StoredProcedure,
-                    CommandTimeout = DefaultCommandTimeoutSeconds
-                };
-                cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
-                cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
-                cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
-                cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
 
-                try
-                {
-                    cnn.Open();
-                    object ob = cmd.ExecuteScalar();
-                    if (ob != null && ob != DBNull.Value)
-                        foundId = Convert.ToInt32(ob);
-                }
-                catch
-                {
-                    foundId = 0; // swallow, caller will treat as not found
-                }
+            cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
+            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 0 }); // legacy mode
+
+            try
+            {
+                cnn.Open();
+                object ob = cmd.ExecuteScalar();
+                return (ob != null && ob != DBNull.Value) ? Convert.ToInt32(ob) : 0;
             }
-            return foundId;
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// New helper: returns the first matching row with details (or null if not found).
+        /// </summary>
+        public ItemFoundDetails ItemsAdvancedFind(int departmentId, string itemId = null, string itemName = null, string barcode = null)
+        {
+            using var cnn = GetConnection();
+            using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
+            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+            cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 1 }); // detail mode
+
+            try
+            {
+                cnn.Open();
+                using var rdr = cmd.ExecuteReader();
+                if (!rdr.Read()) return null;
+
+                return new ItemFoundDetails
+                {
+                    ID = rdr["ID"] is DBNull ? 0 : Convert.ToInt32(rdr["ID"]),
+                    ItemID = rdr["ItemID"] as string,
+                    ItemName = rdr["ItemName"] as string,
+                    DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
+                    MatchedBarcode = rdr["MatchedBarcode"] as string
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<List<ItemExistenceBatchResponse>> ItemsAdvancedExistsBatchAsync(
-    int departmentId, IEnumerable<ItemExistenceProbe> items, CancellationToken ct = default)
+            int departmentId,
+            IEnumerable<ItemExistenceProbe> items,
+            bool returnDetails = false,
+            CancellationToken ct = default)
         {
             var results = new List<ItemExistenceBatchResponse>();
 
@@ -2190,11 +2207,12 @@ namespace FinabitAPI.Utilis
             };
 
             var pDept = cmd.Parameters.Add("@DepartmentID", SqlDbType.Int);
-            pDept.Value = departmentId;
-
             var pItemID = cmd.Parameters.Add("@ItemID", SqlDbType.NVarChar, 200);
             var pItemName = cmd.Parameters.Add("@ItemName", SqlDbType.NVarChar, 200);
             var pBarcode = cmd.Parameters.Add("@Barcode", SqlDbType.NVarChar, 200);
+            var pRetDet = cmd.Parameters.Add("@ReturnDetails", SqlDbType.Bit);
+
+            pDept.Value = departmentId;
 
             await cnn.OpenAsync(ct).ConfigureAwait(false);
 
@@ -2203,28 +2221,55 @@ namespace FinabitAPI.Utilis
                 pItemID.Value = (object?)x.ItemID ?? DBNull.Value;
                 pItemName.Value = (object?)x.Name ?? DBNull.Value;
                 pBarcode.Value = (object?)x.Barcode ?? DBNull.Value;
+                pRetDet.Value = returnDetails ? 1 : 0;
 
-                int foundId = 0;
-                try
-                {
-                    var ob = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-                    if (ob != null && ob != DBNull.Value)
-                        foundId = Convert.ToInt32(ob);
-                }
-                catch
-                {
-                    foundId = 0;
-                }
-
-                results.Add(new ItemExistenceBatchResponse
+                var resp = new ItemExistenceBatchResponse
                 {
                     Index = x.Index,
                     ItemID = x.ItemID,
                     Name = x.Name,
-                    Barcode = x.Barcode,
-                    Exists = foundId > 0,
-                    FoundID = foundId
-                });
+                    Barcode = x.Barcode
+                };
+
+                try
+                {
+                    if (!returnDetails)
+                    {
+                        var ob = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                        resp.FoundID = (ob != null && ob != DBNull.Value) ? Convert.ToInt32(ob) : 0;
+                        resp.Exists = resp.FoundID > 0;
+                    }
+                    else
+                    {
+                        using var rdr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                        if (await rdr.ReadAsync(ct).ConfigureAwait(false))
+                        {
+                            var det = new ItemFoundDetails
+                            {
+                                ID = rdr["ID"] is DBNull ? 0 : Convert.ToInt32(rdr["ID"]),
+                                ItemID = rdr["ItemID"] as string,
+                                ItemName = rdr["ItemName"] as string,
+                                DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
+                                MatchedBarcode = rdr["MatchedBarcode"] as string
+                            };
+                            resp.FoundID = det.ID;
+                            resp.Exists = det.ID > 0;
+                            resp.Details = det;
+                        }
+                        else
+                        {
+                            resp.Exists = false;
+                            resp.FoundID = 0;
+                        }
+                    }
+                }
+                catch
+                {
+                    resp.Exists = false;
+                    resp.FoundID = 0;
+                }
+
+                results.Add(resp);
             }
 
             results.Sort((a, b) => a.Index.CompareTo(b.Index));
@@ -2577,6 +2622,28 @@ namespace FinabitAPI.Utilis
             cls.CardID = GetVal<int>(dr, "CardID");
             cls.CardBarcode = GetVal<string>(dr, "CardBarcode", "");
             return cls;
+        }
+
+        public void ContractsDocsInsert(DataTable dt, int scanDocMode, string docNo, DateTime? docDate, string subjectName, int userId = -1)
+        {
+            using (SqlConnection cnn = GetConnection())
+            using (SqlCommand cmd = new SqlCommand("dbo.spContractsDocsInsert", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                var pScanDoc = cmd.Parameters.Add("@ScanDoc", SqlDbType.Structured);
+                pScanDoc.TypeName = "dbo.ContractsDocs";       
+                pScanDoc.Value = dt ?? throw new ArgumentNullException(nameof(dt));
+
+                cmd.Parameters.Add("@ScanDocMODE", SqlDbType.Int).Value = scanDocMode;
+                cmd.Parameters.Add("@UserID", SqlDbType.Int).Value = userId; // defaults to -1
+                cmd.Parameters.Add("@DocNo", SqlDbType.VarChar, 100).Value = (object?)docNo ?? DBNull.Value;
+                cmd.Parameters.Add("@DocDate", SqlDbType.SmallDateTime).Value = (object?)docDate ?? DBNull.Value;
+                cmd.Parameters.Add("@SubjectName", SqlDbType.NVarChar, 1000).Value = (object?)subjectName ?? DBNull.Value;
+
+                cnn.Open();
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 }

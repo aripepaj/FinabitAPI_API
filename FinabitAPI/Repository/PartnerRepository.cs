@@ -1518,45 +1518,47 @@ namespace AutoBit_WebInvoices.Models
         {
             if (partners == null || partners.Count == 0) return (0,0,null);
             var dt = new DataTable();
-            dt.Columns.Add("PartnerName", typeof(string));
-            dt.Columns.Add("Type", typeof(string));
-            dt.Columns.Add("Account", typeof(string));
-            dt.Columns.Add("PartnerGroup", typeof(string));
-            dt.Columns.Add("PartnerCategory", typeof(string));
-            dt.Columns.Add("StateID", typeof(string));
-            dt.Columns.Add("City", typeof(string));
-            dt.Columns.Add("Region", typeof(string));
-            dt.Columns.Add("Tel1", typeof(string));
-            dt.Columns.Add("Tel2", typeof(string));
-            dt.Columns.Add("Email", typeof(string));
-            dt.Columns.Add("FiscalNo", typeof(string));
-            dt.Columns.Add("BussinesNo", typeof(string));
-            dt.Columns.Add("VatNo", typeof(string));
-            dt.Columns.Add("DiscountPercent", typeof(decimal));
-            dt.Columns.Add("ItemID", typeof(string));
-            dt.Columns.Add("Adress", typeof(string));
-            dt.Columns.Add("ContactPerson", typeof(string));
+            dt.Columns.Add("PartnerName", typeof(string));  // 1
+            dt.Columns.Add("Type", typeof(string));  // 2
+            dt.Columns.Add("FiscalNo", typeof(string));  // 3
+            dt.Columns.Add("BusinessNo", typeof(string));  // 4
+            dt.Columns.Add("VatNo", typeof(string));  // 5
+            dt.Columns.Add("Adress", typeof(string));  // 6
+            dt.Columns.Add("City", typeof(string));  // 7
+            dt.Columns.Add("stateid", typeof(string));  // 8
+            dt.Columns.Add("itemid", typeof(string));  // 9
+            dt.Columns.Add("discountpercent", typeof(decimal)); // 10
+            dt.Columns.Add("PartnerGroup", typeof(string));  // 11
+            dt.Columns.Add("Region", typeof(string));  // 12
+            dt.Columns.Add("PartnerCategory", typeof(string));  // 13
+            dt.Columns.Add("Tel1", typeof(string));  // 14
+            dt.Columns.Add("Tel2", typeof(string));  // 15
+            dt.Columns.Add("ContactPerson", typeof(string));  // 16
+            dt.Columns.Add("Account", typeof(string));  // 17
+            dt.Columns.Add("Email", typeof(string));  // 18
 
             foreach (var p in partners)
             {
-                dt.Rows.Add(p.PartnerName ?? string.Empty,
-                    p.Type ?? string.Empty,
-                    p.Account ?? string.Empty,
-                    p.PartnerGroup ?? string.Empty,
-                    p.PartnerCategory ?? string.Empty,
-                    p.StateID ?? string.Empty,
-                    p.City ?? string.Empty,
-                    p.Region ?? string.Empty,
-                    p.Tel1 ?? string.Empty,
-                    p.Tel2 ?? string.Empty,
-                    p.Email ?? string.Empty,
-                    p.FiscalNo ?? string.Empty,
-                    p.BussinesNo ?? string.Empty,
-                    p.VatNo ?? string.Empty,
-                    p.DiscountPercent,
-                    p.ItemID ?? string.Empty,
-                    p.Adress ?? string.Empty,
-                    p.ContactPerson ?? string.Empty);
+                dt.Rows.Add(
+     p.PartnerName ?? string.Empty,   // 1
+     p.Type ?? string.Empty,          // 2
+     p.FiscalNo ?? string.Empty,      // 3
+     p.BussinesNo ?? string.Empty,    // 4
+     p.VatNo ?? string.Empty,         // 5
+     p.Adress ?? string.Empty,        // 6
+     p.City ?? string.Empty,          // 7
+     p.StateID ?? string.Empty,       // 8
+     p.ItemID ?? string.Empty,        // 9
+     p.DiscountPercent,               // 10
+     p.PartnerGroup ?? string.Empty,  // 11
+     p.Region ?? string.Empty,        // 12
+     p.PartnerCategory ?? string.Empty,// 13
+     p.Tel1 ?? string.Empty,          // 14
+     p.Tel2 ?? string.Empty,          // 15
+     p.ContactPerson ?? string.Empty, // 16
+     p.Account ?? string.Empty,       // 17
+     p.Email ?? string.Empty          // 18
+ );
             }
             int inserted = 0; string error = null;
             try

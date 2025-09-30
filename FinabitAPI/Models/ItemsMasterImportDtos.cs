@@ -64,9 +64,10 @@ namespace Finabit_API.Models
         public List<ImportAssemblyRow> Assemblies { get; set; } = new();
     }
 
-    public sealed class ImportItemsMasterResponse
+    public class ImportItemsMasterResponse
     {
         public int Inserted { get; set; }
         public string Error { get; set; }
+        public List<Dictionary<string, object>> InsertedItems { get; set; } = new();
     }
 }

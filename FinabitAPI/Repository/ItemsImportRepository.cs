@@ -10,67 +10,54 @@ namespace FinabitAPI.Repository
 {
     public class ItemsMasterImportRepository
     {
-        // TVP type and proc must match your SQL
         private const string TVP_Name = "dbo.ImportItems";
-        private const string PROC_Name = "[dbo].[_ImportItems]";
+        private const string PROC_Name = "[dbo].[_ImportItems_API]";   
 
-        private readonly DBAccess _db;   // your existing DB access helper
+        private readonly DBAccess _db;
+        public ItemsMasterImportRepository(DBAccess db) { _db = db; }
 
-        public ItemsMasterImportRepository(DBAccess db)
-        {
-            _db = db;
-        }
-
-        /// <summary>
-        /// Calls [dbo].[_ImportItems] @ImportItems=@tvp, @NewID=@newTransactionId
-        /// </summary>
-        public async Task<(int inserted, string error)> ImportItemsAsync(
-            List<ImportItemRow> items,
-            int newTransactionId)
+        public async Task<(int inserted, string error, List<Dictionary<string, object>> items)>
+            ImportItemsAsync(List<ImportItemRow> items, int newTransactionId)
         {
             if (items == null || items.Count == 0)
-                return (0, "Items payload required");
+                return (0, "Items payload required", new List<Dictionary<string, object>>());
 
             try
             {
                 using var conn = _db.GetConnection();
                 await conn.OpenAsync();
 
-                // Build a DataTable that EXACTLY matches the TVP schema (names, order, types)
                 var tvp = await BuildItemsTableFromTvpSchemaAsync(conn, TVP_Name, items);
 
-                using var cmd = new SqlCommand(PROC_Name, conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = new SqlCommand(PROC_Name, conn) { CommandType = CommandType.StoredProcedure };
+                cmd.Parameters.Add(new SqlParameter("@ImportItems", SqlDbType.Structured) { TypeName = TVP_Name, Value = tvp });
+                cmd.Parameters.Add(new SqlParameter("@NewID", SqlDbType.Int) { Value = newTransactionId });
 
-                // @ImportItems TVP
-                var pItems = new SqlParameter("@ImportItems", SqlDbType.Structured)
-                {
-                    TypeName = TVP_Name,
-                    Value = tvp
-                };
-                cmd.Parameters.Add(pItems);
+                var rows = new List<Dictionary<string, object>>();
 
-                // @NewID
-                cmd.Parameters.Add(new SqlParameter("@NewID", SqlDbType.Int)
-                {
-                    Value = newTransactionId
-                });
+                using var rdr = await cmd.ExecuteReaderAsync();
 
-                await cmd.ExecuteNonQueryAsync();
-                return (items.Count, null);
+                var fieldCount = rdr.FieldCount;
+                while (await rdr.ReadAsync())
+                {
+                    var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                    for (int i = 0; i < fieldCount; i++)
+                    {
+                        var name = rdr.GetName(i);
+                        var val = await rdr.IsDBNullAsync(i) ? null : rdr.GetValue(i);
+                        dict[name] = val;
+                    }
+                    rows.Add(dict);
+                }
+
+                return (rows.Count, null, rows);
             }
             catch (Exception ex)
             {
-                return (0, ex.Message);
+                return (0, ex.Message, new List<Dictionary<string, object>>());
             }
         }
 
-        /// <summary>
-        /// Reads the TVP schema (column name, order, SQL type) from sys.* and builds a DataTable
-        /// with matching columns. Then fills rows from our DTO by column name.
-        /// </summary>
         private static async Task<DataTable> BuildItemsTableFromTvpSchemaAsync(
             SqlConnection conn,
             string tvpFullName,

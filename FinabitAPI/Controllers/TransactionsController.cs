@@ -1251,7 +1251,7 @@ namespace FinabitAPI.Controllers
             return Ok(rows);
         }
 
-        [HttpPost("ContractsDocsImport")]
+        [HttpPost("FilesImport")]
         [RequestSizeLimit(1024L * 1024L * 200L)]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> ContractsDocsImport([FromForm] ImportContractsDocsForm form)
@@ -1271,6 +1271,7 @@ namespace FinabitAPI.Controllers
             dt.Columns.Add("DocType", typeof(int));
             dt.Columns.Add("ExtensionPath", typeof(string));
             dt.Columns.Add("Description", typeof(string));
+            dt.Columns.Add("Type", typeof(int));
 
             for (int i = 0; i < form.Files.Count; i++)
             {
@@ -1296,6 +1297,7 @@ namespace FinabitAPI.Controllers
                 row["DocType"] = docType;
                 row["ExtensionPath"] = ext;
                 row["Description"] = desc;
+                row["Type"] = 1;
                 dt.Rows.Add(row);
             }
 
@@ -3048,7 +3050,7 @@ namespace FinabitAPI.Controllers
             cls.CompanyID = CompanyID;
             return cls;
         }
-
+       
         [HttpGet("GetItemStateForOneItem")]
         public ActionResult<List<ItemState>> GetItemStateForOneItem([FromQuery] string ItemID)
         {

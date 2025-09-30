@@ -6,6 +6,7 @@ using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using ItemExistenceResponse = FinabitAPI.Models.ItemExistenceResponse;
 
 namespace FinabitAPI.Controllers
 {
@@ -41,13 +42,21 @@ namespace FinabitAPI.Controllers
         }
 
         [HttpPost("ImportItemsMaster")]
-        public async Task<ActionResult<ImportItemsMasterResponse>> ImportItemsMaster([FromBody] ImportItemsMasterRequest request, [FromQuery] int newTransactionId)
+        public async Task<ActionResult<ImportItemsMasterResponse>> ImportItemsMaster(
+    [FromBody] ImportItemsMasterRequest request, [FromQuery] int newTransactionId)
         {
             if (request?.Items == null || request.Items.Count == 0)
                 return BadRequest("Items payload required");
 
-            var (inserted, error) = await _importRepo.ImportItemsAsync(request.Items, newTransactionId);
-            var resp = new ImportItemsMasterResponse { Inserted = inserted, Error = error };
+            var (inserted, error, items) = await _importRepo.ImportItemsAsync(request.Items, newTransactionId);
+
+            var resp = new ImportItemsMasterResponse
+            {
+                Inserted = inserted,
+                Error = error,
+                InsertedItems = items    // <-- full rows returned by SQL
+            };
+
             if (!string.IsNullOrEmpty(error))
                 return StatusCode(500, resp);
 
@@ -71,25 +80,52 @@ namespace FinabitAPI.Controllers
         }
 
         [HttpGet("exists")]
-        public ActionResult<ItemExistenceResponse> Exists([
-            FromQuery] int departmentId,
-            [FromQuery] string itemId = null,
-            [FromQuery] string name = null,
-            [FromQuery] string barcode = null)
+        public ActionResult<ItemExistenceResponse> Exists(
+    [FromQuery] int departmentId,
+    [FromQuery] string itemId = null,
+    [FromQuery] string name = null,
+    [FromQuery] string barcode = null,
+    [FromQuery] bool returnDetails = false)
         {
             if (departmentId <= 0) return BadRequest("departmentId required");
-            if (string.IsNullOrWhiteSpace(itemId) && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(barcode))
+            if (string.IsNullOrWhiteSpace(itemId) &&
+                string.IsNullOrWhiteSpace(name) &&
+                string.IsNullOrWhiteSpace(barcode))
                 return BadRequest("Provide at least one of itemId, name or barcode");
 
-            int foundId = _dbAccess.ItemsAdvancedExists(departmentId, itemId, name, barcode);
-            return Ok(new ItemExistenceResponse { Exists = foundId > 0, ItemID = itemId });
+            if (!returnDetails)
+            {
+                int foundId = _dbAccess.ItemsAdvancedExists(departmentId, itemId, name, barcode);
+                return Ok(new ItemExistenceResponse
+                {
+                    Exists = foundId > 0,
+                    ItemID = itemId,
+                    Name = name,
+                    Barcode = barcode,
+                    FoundID = foundId
+                });
+            }
+            else
+            {
+                var det = _dbAccess.ItemsAdvancedFind(departmentId, itemId, name, barcode);
+                return Ok(new ItemExistenceResponse
+                {
+                    Exists = det != null && det.ID > 0,
+                    ItemID = itemId,
+                    Name = name,
+                    Barcode = barcode,
+                    FoundID = det?.ID ?? 0,
+                    Details = det
+                });
+            }
         }
 
         [HttpPost("exists/batch")]
         public async Task<ActionResult<List<ItemExistenceBatchResponse>>> ExistsBatch(
-    [FromQuery] int departmentId,
-    [FromBody] List<ItemExistenceProbe> items,
-    CancellationToken ct)
+            [FromQuery] int departmentId,
+            [FromBody] List<ItemExistenceProbe> items,
+            [FromQuery] bool returnDetails = false,
+            CancellationToken ct = default)
         {
             if (departmentId <= 0) return BadRequest("departmentId required");
             if (items == null || items.Count == 0) return BadRequest("Items required");
@@ -102,7 +138,7 @@ namespace FinabitAPI.Controllers
                     return BadRequest($"Row Index {it.Index}: provide at least one of itemId, name or barcode.");
             }
 
-            var res = await _dbAccess.ItemsAdvancedExistsBatchAsync(departmentId, items, ct);
+            var res = await _dbAccess.ItemsAdvancedExistsBatchAsync(departmentId, items, returnDetails, ct);
             return Ok(res);
         }
 
