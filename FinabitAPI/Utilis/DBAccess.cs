@@ -2039,6 +2039,28 @@ namespace FinabitAPI.Utilis
             return list;
         }
 
+        public async Task<int> CloneTransactionExactAsync(
+    int sourceId,
+    DateTime newDate,
+    CancellationToken ct = default)
+        {
+            await using var cnn = await OpenWithRetryAsync(ct);
+            await using var cmd = new SqlCommand("dbo.usp_CloneTransactionExact_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds
+            };
+
+            cmd.Parameters.Add(new SqlParameter("@SourceID", SqlDbType.Int) { Value = sourceId });
+            cmd.Parameters.Add(new SqlParameter("@NewDate", SqlDbType.Date) { Value = newDate.Date });
+
+            var obj = await cmd.ExecuteScalarAsync(ct);
+            if (obj == null || obj == DBNull.Value)
+                throw new InvalidOperationException("Clone procedure did not return a new ID.");
+
+            return Convert.ToInt32(obj);
+        }
+
         public async Task<PaginationResult<ItemsLookup>> GetAllItemsFilteredAsync(ItemsFilter filter, CancellationToken ct = default)
         {
             var items = new List<ItemsLookup>();
@@ -2182,7 +2204,8 @@ namespace FinabitAPI.Utilis
                     ItemID = rdr["ItemID"] as string,
                     ItemName = rdr["ItemName"] as string,
                     DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
-                    MatchedBarcode = rdr["MatchedBarcode"] as string
+                    MatchedBarcode = rdr["MatchedBarcode"] as string,
+                    VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"])
                 };
             }
             catch
@@ -2250,7 +2273,8 @@ namespace FinabitAPI.Utilis
                                 ItemID = rdr["ItemID"] as string,
                                 ItemName = rdr["ItemName"] as string,
                                 DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
-                                MatchedBarcode = rdr["MatchedBarcode"] as string
+                                MatchedBarcode = rdr["MatchedBarcode"] as string,
+                                VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"]) // <-- add this
                             };
                             resp.FoundID = det.ID;
                             resp.Exists = det.ID > 0;
@@ -2314,6 +2338,7 @@ namespace FinabitAPI.Utilis
                 int oItemID = dr.GetOrdinal("ItemID");
                 int oDescription = dr.GetOrdinal("Description");
                 int oItemNameCol = dr.GetOrdinal("ItemName");
+                int vatValue = dr.GetOrdinal("VatValue");
 
                 while (await dr.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
@@ -2322,7 +2347,8 @@ namespace FinabitAPI.Utilis
                         DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
                         ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
                         Description = dr.IsDBNull(oDescription) ? null : dr.GetString(oDescription),
-                        ItemName = dr.IsDBNull(oItemNameCol) ? null : dr.GetString(oItemNameCol)
+                        ItemName = dr.IsDBNull(oItemNameCol) ? null : dr.GetString(oItemNameCol),
+                        VatValue = dr.IsDBNull(vatValue) ? 0 : dr.GetDecimal(vatValue)
                     });
                 }
             }

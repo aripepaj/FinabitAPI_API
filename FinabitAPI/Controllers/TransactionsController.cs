@@ -938,15 +938,6 @@ namespace FinabitAPI.Controllers
                 }
             }
             catch { bllt.CloseGlobalConnection(); }
-            finally
-            {
-                try
-                {
-                    bllt.CloseGlobalConnection();
-                }
-                catch (Exception ex) { /*Users_GetLoginUserByPIN(ex.Message);*/ }
-                //Users_GetLoginUserByPIN("E mbyll koneksionin 3");
-            }
             if (t.ErrorDescription != "")
             {
                 try
@@ -987,6 +978,28 @@ namespace FinabitAPI.Controllers
             return GetOrders(FromDate, ToDate);
         }
 
+        [HttpPost("clone")]
+        public async Task<ActionResult<Transactions>> CloneWithProc(CloneTransactionRequest body, CancellationToken ct)
+        {
+            if (body.TransactionId <= 0 || body == null)
+                return BadRequest("transactionId and newDate are required.");
+
+            int newId;
+            try
+            {
+                newId = await _dbAccess.CloneTransactionExactAsync(body.TransactionId, body.NewDate, ct);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Clone failed: {ex.Message}");
+            }
+
+            var cloned = TransactionsService.SelectByID(new Transactions { ID = newId });
+            if (cloned == null || cloned.ID == 0)
+                return StatusCode(500, $"Cloned transaction {newId} inserted, but could not be loaded.");
+
+            return Ok(cloned);
+        }
 
         [HttpGet("TransactionsList")]
         public async Task<ActionResult<List<Orders>>> TransactionsList(

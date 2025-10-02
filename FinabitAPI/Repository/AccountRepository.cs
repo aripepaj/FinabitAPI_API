@@ -9,6 +9,9 @@ namespace FinabitAPI.Repository
     {
         Task<IReadOnlyList<AccountMatchDto>> SearchAccountsAsync(
             string? accountId, string? accountName, CancellationToken ct = default);
+
+        Task<IReadOnlyList<AccountListItemDto>> GetAllAccountsAsync(
+            CancellationToken ct = default);
     }
 
     public sealed class AccountRepository : IAccountRepository
@@ -16,6 +19,7 @@ namespace FinabitAPI.Repository
         private readonly DBAccess _db;
 
         private const string ProcSearch = "dbo.spGeAccountMatches_API";
+        private const string ProcListAll = "dbo.spAccountList_API";
         private const int DefaultTimeout = 60;
 
         public AccountRepository(DBAccess db) => _db = db;
@@ -56,6 +60,45 @@ namespace FinabitAPI.Repository
                     ItemID = dr.IsDBNull(oItemID) ? string.Empty : dr.GetString(oItemID),
                     Description = dr.IsDBNull(oDesc) ? string.Empty : dr.GetString(oDesc),
                     ItemName = dr.IsDBNull(oItemName) ? string.Empty : dr.GetString(oItemName)
+                });
+            }
+
+            return list;
+        }
+
+        public async Task<IReadOnlyList<AccountListItemDto>> GetAllAccountsAsync(
+            CancellationToken ct = default)
+        {
+            var list = new List<AccountListItemDto>();
+
+            await using var conn = _db.GetConnection();
+            await using var cmd = new SqlCommand(ProcListAll, conn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultTimeout
+            };
+
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+            await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection, ct)
+                                          .ConfigureAwait(false);
+
+            if (!dr.HasRows) return list;
+
+            int oAccount = dr.GetOrdinal("Account");
+            int oDesc = dr.GetOrdinal("AccountDescription");
+            int oDisplay = dr.GetOrdinal("AccountDisplay");
+            int oSgId = dr.GetOrdinal("AccountSubGroupID");
+            int oSgName = dr.GetOrdinal("AccountSubGroupName");
+
+            while (await dr.ReadAsync(ct).ConfigureAwait(false))
+            {
+                list.Add(new AccountListItemDto
+                {
+                    Account = dr.IsDBNull(oAccount) ? "" : dr.GetString(oAccount),
+                    AccountDescription = dr.IsDBNull(oDesc) ? "" : dr.GetString(oDesc),
+                    AccountDisplay = dr.IsDBNull(oDisplay) ? "" : dr.GetString(oDisplay),
+                    AccountSubGroupID = dr.IsDBNull(oSgId) ? 0 : dr.GetInt32(oSgId),
+                    AccountSubGroupName = dr.IsDBNull(oSgName) ? "" : dr.GetString(oSgName)
                 });
             }
 

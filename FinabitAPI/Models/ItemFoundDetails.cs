@@ -7,6 +7,7 @@
         public string ItemName { get; set; }
         public int? DepartmentID { get; set; }
         public string MatchedBarcode { get; set; }
+        public decimal VatValue { get; set; }
     }
 
     public sealed class ItemExistenceResponse

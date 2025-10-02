@@ -6,5 +6,6 @@
         public string ItemID { get; set; }       // td.ItemID
         public string Description { get; set; }  // td.ItemName (raw description on the transaction)
         public string ItemName { get; set; }     // i.ItemName OR a.AccountDescription
+        public decimal VatValue { get; set; }
     }
 }

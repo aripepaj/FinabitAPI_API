@@ -85,7 +85,7 @@ namespace FinabitAPI.Controllers
     [FromQuery] string itemId = null,
     [FromQuery] string name = null,
     [FromQuery] string barcode = null,
-    [FromQuery] bool returnDetails = false)
+    [FromQuery] bool returnDetails = true)
         {
             if (departmentId <= 0) return BadRequest("departmentId required");
             if (string.IsNullOrWhiteSpace(itemId) &&
@@ -124,7 +124,7 @@ namespace FinabitAPI.Controllers
         public async Task<ActionResult<List<ItemExistenceBatchResponse>>> ExistsBatch(
             [FromQuery] int departmentId,
             [FromBody] List<ItemExistenceProbe> items,
-            [FromQuery] bool returnDetails = false,
+            [FromQuery] bool returnDetails = true,
             CancellationToken ct = default)
         {
             if (departmentId <= 0) return BadRequest("departmentId required");

@@ -123,4 +123,15 @@ public class AccountController : ControllerBase
         var ordered = probes.Select(p => byIndex[p.Index]).ToList();
         return Ok(ordered);
     }
+
+
+    [HttpGet("getAll")]
+    [ProducesResponseType(typeof(IReadOnlyList<AccountListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AccountListItemDto>>> GetAllAccounts(
+            CancellationToken ct = default)
+    {
+        var rows = await _repo.GetAllAccountsAsync(ct);
+        return Ok(rows);
+    }
+
 }
