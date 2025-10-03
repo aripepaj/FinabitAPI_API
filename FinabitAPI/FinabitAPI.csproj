@@ -30,7 +30,7 @@
   </ItemGroup>
 
 <ItemGroup>
-  <Content Include="sql\*.sql">
+  <Content Include="Core\sql\*.sql">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     <TargetPath>sql\%(Filename)%(Extension)</TargetPath>
   </Content>
