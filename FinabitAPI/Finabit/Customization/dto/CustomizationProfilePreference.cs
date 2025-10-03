@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinabitAPI.Models
+namespace FinabitAPI.Finabit.Customization.dto
 {
     /// <summary>
     /// Represents user preferences like last selected view names

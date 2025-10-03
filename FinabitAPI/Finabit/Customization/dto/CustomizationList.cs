@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinabitAPI.Models
+namespace FinabitAPI.Finabit.Customization.dto
 {
     /// <summary>
     /// Represents a saved configuration for different list views (table/pivot/chart)

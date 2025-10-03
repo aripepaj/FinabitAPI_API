@@ -3,6 +3,7 @@ using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Multitenancy;
 using FinabitAPI.Employee;
 using FinabitAPI.Finabit.Account;
+using FinabitAPI.Finabit.Customization;
 using FinabitAPI.Finabit.Items;
 using FinabitAPI.Finabit.Partner;
 using FinabitAPI.Finabit.Transaction;

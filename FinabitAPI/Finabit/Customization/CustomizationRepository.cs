@@ -1,9 +1,9 @@
-using FinabitAPI.Models;
+using FinabitAPI.Finabit.Customization.dto;
 using FinabitAPI.Utilis;
 using Microsoft.Data.SqlClient;
 using System.Data;
 
-namespace FinabitAPI.Repository
+namespace FinabitAPI.Finabit.Customization
 {
     public interface ICustomizationRepository
     {

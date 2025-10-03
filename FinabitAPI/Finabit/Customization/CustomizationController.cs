@@ -1,9 +1,8 @@
-using FinabitAPI.Models;
-using FinabitAPI.Repository;
+using FinabitAPI.Finabit.Customization.dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinabitAPI.Controllers
+namespace FinabitAPI.Finabit.Customization
 {
     /// <summary>
     /// Unified controller for all customization features: Lists, Favorites, and Profile Preferences
