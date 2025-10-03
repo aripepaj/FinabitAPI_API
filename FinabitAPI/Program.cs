@@ -1,7 +1,14 @@
-﻿using AutoBit_WebInvoices.Models;
-using Finabit_API.Models;
-using FinabitAPI.Multitenancy;
+﻿using FinabitAPI;
+using FinabitAPI.Core.Global;
+using FinabitAPI.Core.Multitenancy;
+using FinabitAPI.Employee;
+using FinabitAPI.Finabit.Account;
+using FinabitAPI.Finabit.Customization;
+using FinabitAPI.Finabit.Items;
+using FinabitAPI.Finabit.Partner;
+using FinabitAPI.Finabit.Transaction;
 using FinabitAPI.Repository;
+using FinabitAPI.User;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
