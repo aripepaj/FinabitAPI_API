@@ -52,6 +52,7 @@ builder.Services.AddScoped<IAccountRepository,AccountRepository>();
 builder.Services.AddScoped<ItemsMasterImportRepository>();
 builder.Services.AddScoped<OptionsRepository>();
 builder.Services.AddScoped<TransactionsRepository>();
+builder.Services.AddScoped<ICustomizationRepository, CustomizationRepository>();
 builder.Services.AddControllers();
 
 builder.Services
