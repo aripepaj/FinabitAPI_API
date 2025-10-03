@@ -10,16 +10,20 @@ namespace FinabitAPI.Models
     {
         public int Id { get; set; }
 
-        [Required]
-        [StringLength(255)]
+        [Required, StringLength(255)]
         public string User { get; set; } = string.Empty;
 
-        [Required]
-        [StringLength(255)]
-        public string PrefKey { get; set; } = string.Empty;
+        // New composite unique parts
+        [StringLength(255)] public string? StorageKey { get; set; }
+        [StringLength(50)] public string? Mode { get; set; } // table|pivot|chart
+        [StringLength(20)] public string? Device { get; set; } // mobile|desktop|null
 
-        [Required]
-        public string PrefValue { get; set; } = string.Empty;
+        // New field
+        [StringLength(255)] public string? LastViewName { get; set; }
+
+        // Legacy fields retained for backward compatibility
+        [StringLength(255)] public string? PrefKey { get; set; }
+        public string? PrefValue { get; set; }
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
@@ -29,13 +33,14 @@ namespace FinabitAPI.Models
     /// </summary>
     public class CustomizationProfilePreferenceDto
     {
-        [Required]
-        public string User { get; set; } = string.Empty;
+        [Required] public string User { get; set; } = string.Empty;
+        public string? StorageKey { get; set; }
+        public string? Mode { get; set; }
+        public string? Device { get; set; }
+        public string? LastViewName { get; set; }
 
-        [Required]
-        public string PrefKey { get; set; } = string.Empty;
-
-        [Required]
-        public string PrefValue { get; set; } = string.Empty;
+        // Legacy fields
+        public string? PrefKey { get; set; }
+        public string? PrefValue { get; set; }
     }
 }

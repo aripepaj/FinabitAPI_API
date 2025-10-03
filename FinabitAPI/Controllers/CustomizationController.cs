@@ -48,15 +48,16 @@ namespace FinabitAPI.Controllers
         }
 
         /// <summary>
-        /// Get all customization lists for a user, optionally filtered by type
+        /// Get all customization lists for a user, optionally filtered by mode/storage/device (legacy 'type' still accepted)
         /// </summary>
         [HttpGet("lists/user/{user}")]
         [ProducesResponseType(typeof(IReadOnlyList<CustomizationList>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetListsByUser(string user, [FromQuery] string? type = null, CancellationToken ct = default)
+        public async Task<IActionResult> GetListsByUser(string user, [FromQuery] string? mode = null, [FromQuery] string? storageKey = null, [FromQuery] string? device = null, [FromQuery] string? type = null, CancellationToken ct = default)
         {
             try
             {
-                var lists = await _repo.GetListsByUserAsync(user, type, ct);
+                if (string.IsNullOrEmpty(mode) && !string.IsNullOrEmpty(type)) mode = type; // backward compatibility
+                var lists = await _repo.GetListsByUserAsync(user, mode, storageKey, device, ct);
                 return Ok(lists);
             }
             catch (Exception ex)
@@ -67,24 +68,24 @@ namespace FinabitAPI.Controllers
         }
 
         /// <summary>
-        /// Get a specific customization list by user, name, and type
+        /// Get a specific customization list by user, name, and mode (legacy 'type' route kept)
         /// </summary>
-        [HttpGet("lists/user/{user}/name/{name}/type/{type}")]
+        [HttpGet("lists/user/{user}/name/{name}/mode/{mode}")]
+        [HttpGet("lists/user/{user}/name/{name}/type/{mode}")] // backward compatibility
         [ProducesResponseType(typeof(CustomizationList), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetListByUserNameType(string user, string name, string type, CancellationToken ct)
+        public async Task<IActionResult> GetListByUserNameType(string user, string name, string mode, [FromQuery] string? storageKey, [FromQuery] string? device, CancellationToken ct)
         {
             try
             {
-                var list = await _repo.GetListByUserNameTypeAsync(user, name, type, ct);
+                var list = await _repo.GetListByCompositeAsync(user, name, mode, storageKey, device, ct);
                 if (list == null)
                     return NotFound(new { message = "Customization list not found" });
-
                 return Ok(list);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving customization list for user {User}, name {Name}, type {Type}", user, name, type);
+                _logger.LogError(ex, "Error retrieving customization list for user {User}, name {Name}, mode {Mode}", user, name, mode);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
@@ -102,9 +103,9 @@ namespace FinabitAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                // Validate type
-                if (dto.Type != "table" && dto.Type != "pivot" && dto.Type != "chart")
-                    return BadRequest(new { message = "Type must be 'table', 'pivot', or 'chart'" });
+                var modeValue = !string.IsNullOrEmpty(dto.Mode) ? dto.Mode : dto.Type;
+                if (modeValue != "table" && modeValue != "pivot" && modeValue != "chart")
+                    return BadRequest(new { message = "Mode must be 'table', 'pivot', or 'chart'" });
 
                 var id = await _repo.CreateListAsync(dto, ct);
                 return CreatedAtAction(nameof(GetListById), new { id }, new { id, message = "Customization list created successfully" });
@@ -194,15 +195,15 @@ namespace FinabitAPI.Controllers
         }
 
         /// <summary>
-        /// Get all favorites for a user, optionally filtered by item type
+        /// Get all favorites for a user
         /// </summary>
         [HttpGet("favorites/user/{user}")]
         [ProducesResponseType(typeof(IReadOnlyList<CustomizationFavorite>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetFavoritesByUser(string user, [FromQuery] string? itemType = null, CancellationToken ct = default)
+        public async Task<IActionResult> GetFavoritesByUser(string user, CancellationToken ct = default)
         {
             try
             {
-                var favorites = await _repo.GetFavoritesByUserAsync(user, itemType, ct);
+                var favorites = await _repo.GetFavoritesByUserAsync(user, ct);
                 return Ok(favorites);
             }
             catch (Exception ex)
@@ -213,24 +214,24 @@ namespace FinabitAPI.Controllers
         }
 
         /// <summary>
-        /// Get a specific favorite by user, item ID, and item type
+        /// Get a specific favorite by user and item ID (legacy route with itemType still works)
         /// </summary>
+        [HttpGet("favorites/user/{user}/item/{itemId}")]
         [HttpGet("favorites/user/{user}/item/{itemId}/type/{itemType}")]
         [ProducesResponseType(typeof(CustomizationFavorite), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetFavoriteByUserItem(string user, string itemId, string itemType, CancellationToken ct)
+        public async Task<IActionResult> GetFavoriteByUserItem(string user, string itemId, string? itemType, CancellationToken ct)
         {
             try
             {
-                var favorite = await _repo.GetFavoriteByUserItemAsync(user, itemId, itemType, ct);
+                var favorite = await _repo.GetFavoriteByUserItemAsync(user, itemId, ct);
                 if (favorite == null)
                     return NotFound(new { message = "Favorite not found" });
-
                 return Ok(favorite);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving favorite for user {User}, item {ItemId}, type {ItemType}", user, itemId, itemType);
+                _logger.LogError(ex, "Error retrieving favorite for user {User}, item {ItemId}", user, itemId);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
@@ -238,22 +239,20 @@ namespace FinabitAPI.Controllers
         /// <summary>
         /// Check if an item is favorited (HEAD request)
         /// </summary>
-        [HttpHead("favorites/user/{user}/item/{itemId}/type/{itemType}")]
+        [HttpHead("favorites/user/{user}/item/{itemId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> CheckFavorite(string user, string itemId, string itemType, CancellationToken ct)
+        public async Task<IActionResult> CheckFavorite(string user, string itemId, CancellationToken ct)
         {
             try
             {
-                var favorite = await _repo.GetFavoriteByUserItemAsync(user, itemId, itemType, ct);
-                if (favorite == null)
-                    return NotFound();
-
+                var favorite = await _repo.GetFavoriteByUserItemAsync(user, itemId, ct);
+                if (favorite == null) return NotFound();
                 return Ok();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking favorite for user {User}, item {ItemId}, type {ItemType}", user, itemId, itemType);
+                _logger.LogError(ex, "Error checking favorite for user {User}, item {ItemId}", user, itemId);
                 return StatusCode(500);
             }
         }
@@ -307,22 +306,21 @@ namespace FinabitAPI.Controllers
         /// <summary>
         /// Delete a favorite by user, item ID, and item type
         /// </summary>
-        [HttpDelete("favorites/user/{user}/item/{itemId}/type/{itemType}")]
+        [HttpDelete("favorites/user/{user}/item/{itemId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteFavoriteByUserItem(string user, string itemId, string itemType, CancellationToken ct)
+        public async Task<IActionResult> DeleteFavoriteByUserItem(string user, string itemId, CancellationToken ct)
         {
             try
             {
-                var success = await _repo.DeleteFavoriteByUserItemAsync(user, itemId, itemType, ct);
+                var success = await _repo.DeleteFavoriteByUserItemAsync(user, itemId, ct);
                 if (!success)
                     return NotFound(new { message = "Favorite not found" });
-
                 return Ok(new { message = "Favorite deleted successfully" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting favorite for user {User}, item {ItemId}, type {ItemType}", user, itemId, itemType);
+                _logger.LogError(ex, "Error deleting favorite for user {User}, item {ItemId}", user, itemId);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
@@ -374,24 +372,23 @@ namespace FinabitAPI.Controllers
         }
 
         /// <summary>
-        /// Get a specific preference by user and key
+        /// Get a specific preference by composite key (storageKey/mode/device) - legacy prefKey supported via request body fields for upsert only
         /// </summary>
-        [HttpGet("preferences/user/{user}/key/{prefKey}")]
+        [HttpGet("preferences/user/{user}/composite")] // query params: storageKey, mode, device
         [ProducesResponseType(typeof(CustomizationProfilePreference), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetPreferenceByUserKey(string user, string prefKey, CancellationToken ct)
+        public async Task<IActionResult> GetPreferenceComposite(string user, [FromQuery] string? storageKey, [FromQuery] string? mode, [FromQuery] string? device, CancellationToken ct)
         {
             try
             {
-                var preference = await _repo.GetPreferenceByUserKeyAsync(user, prefKey, ct);
+                var preference = await _repo.GetPreferenceCompositeAsync(user, storageKey, mode, device, ct);
                 if (preference == null)
                     return NotFound(new { message = "Preference not found" });
-
                 return Ok(preference);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving preference for user {User}, key {PrefKey}", user, prefKey);
+                _logger.LogError(ex, "Error retrieving composite preference for user {User}", user);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
