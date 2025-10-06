@@ -228,7 +228,7 @@ namespace FinabitAPI.Controllers
             //try
             //{
             //    WriteLog(tt.ErrorDescription);
-            //}
+            //}fv
             //catch (Exception ex) { Users_GetLoginUserByPIN(ex.Message); }
             return tt;
 
@@ -237,7 +237,6 @@ namespace FinabitAPI.Controllers
         }
 
         private bool printTermik = false;
-
 
 
         [HttpPost("TransactionInsertWithPrint")]
@@ -873,7 +872,9 @@ namespace FinabitAPI.Controllers
             // Update the following line to use an instance of DALDepartment instead of calling the method statically.
             dep = _dalDepartment.SelectByID(dep.ID);
             //-----------------------------------------------------------------------------
-          
+
+            cls.EmpID = EmpID;
+            cls.DepartmentID = departmentID;
             cls.CompanyID = dep.CompanyID; // Kompania e cila meren nga depo lokale
                                            //-----------------------------------------------------------------------------
 
@@ -1025,6 +1026,534 @@ namespace FinabitAPI.Controllers
             return Ok(rows);
         }
 
+        /*        #region Helpers for DepartmentsList endpoints
+
+                [HttpPost("Cash/Import")]    
+                public ActionResult<JournalImportResponse> ImportArka([FromBody] JournalImportRequest req)
+                {
+                    if (req == null) return BadRequest();
+                    req.JournalTypeID = 25;
+                    return Ok(ImportJournalCore(req));
+                }
+
+                [HttpPost("Bank/Import")]     
+                public ActionResult<JournalImportResponse> ImportBank([FromBody] JournalImportRequest req)
+                {
+                    if (req == null) return BadRequest();
+                    req.JournalTypeID = 24;
+                    return Ok(ImportJournalCore(req));
+                }
+
+                private JournalImportResponse ImportJournalCore(JournalImportRequest req)
+                {
+                    var resp = new JournalImportResponse();
+
+                    if (req.DepartmentID <= 0)
+                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "DepartmentID required" } } };
+                    if (req.JournalTypeID != 24 && req.JournalTypeID != 25)
+                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "JournalTypeID must be 24 (Bank) or 25 (Arka)" } } };
+                    if (req.Lines == null || req.Lines.Count == 0)
+                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "Lines required" } } };
+
+                    // group by (date, cashAccount)
+                    var groups = req.Lines.GroupBy(l => new { D = l.Date.Date, A = (l.CashAccount ?? "").Trim() });
+
+                    foreach (var g in groups)
+                    {
+                        var gr = new JournalImportGroupResult
+                        {
+                            Date = g.Key.D.ToString("yyyy-MM-dd"),
+                            CashAccount = g.Key.A
+                        };
+
+                        if (string.IsNullOrWhiteSpace(gr.CashAccount))
+                        {
+                            gr.Status = "error";
+                            gr.Error = "CashAccount missing on one or more lines.";
+                            resp.Results.Add(gr);
+                            continue;
+                        }
+
+                        try
+                        {
+                            // 1) find or create header for (date, account, department)
+                            int headerId = _dbAccess.FindJournalHeaderID(req.DepartmentID, req.JournalTypeID, g.Key.D, gr.CashAccount);
+                            Transactions header;
+
+                            if (headerId > 0)
+                            {
+                                header = TransactionsService.SelectByID(new Transactions { ID = headerId });
+                                if (header == null || header.ID == 0)
+                                {
+                                    gr.Status = "error";
+                                    gr.Error = $"Header {headerId} not found.";
+                                    resp.Results.Add(gr);
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                header = BuildJournalHeader(
+                                    journalTypeId: req.JournalTypeID,
+                                    empId: 0,
+                                    departmentId: req.DepartmentID,
+                                    date: g.Key.D,
+                                    cashAccountOverride: gr.CashAccount
+                                );
+
+                                var svcIns = new TransactionsService(true, _dbAccess);
+                                try
+                                {
+                                    header.ErrorID = svcIns.Insert(header, false);
+                                    if (svcIns.ErrorID != 0 || header.ID <= 0)
+                                    {
+                                        gr.Status = "error";
+                                        gr.Error = $"Failed to create header. ErrorID={svcIns.ErrorID}";
+                                        resp.Results.Add(gr);
+                                        continue;
+                                    }
+                                }
+                                finally
+                                {
+                                    svcIns.CloseGlobalConnection();
+                                }
+                            }
+
+                            var details = new List<TransactionsDetails>();
+                            foreach (var l in g)
+                            {
+                                if (l.DetailsType != 3 && l.DetailsType != 4 && l.DetailsType != 5 && l.DetailsType != 6)
+                                    continue;
+
+                                var sign = (l.DetailsType == 3 || l.DetailsType == 6) ? -1m : 1m;
+                                var val = Math.Abs(l.Amount) * sign;
+                                var desc = string.IsNullOrWhiteSpace(l.Description)
+                                    ? (l.DetailsType switch
+                                    {
+                                        3 => "Pagese nga furnitori",
+                                        4 => "Arketim nga konsumatori",
+                                        5 => "Mandat Arketimi (Depozitë)",
+                                        6 => "Mandat Pagese (Terheqje)",
+                                        _ => "Lëvizje"
+                                    })
+                                    : l.Description.Trim();
+
+                                var d = new TransactionsDetails
+                                {
+                                    ID = 0,
+                                    TransactionID = header.ID,
+                                    DetailsType = l.DetailsType,
+                                    ItemID = desc,
+                                    ItemName = desc,
+                                    Quantity = 1,
+                                    Price = val,
+                                    Value = val,
+                                    Mode = 1
+                                };
+                                if (l.PaymentID.HasValue && l.PaymentID.Value > 0)
+                                    d.PaymentID = l.PaymentID.Value;
+
+                                details.Add(d);
+                            }
+
+                            if (details.Count == 0)
+                            {
+                                gr.Status = "error";
+                                gr.Error = "No valid lines to insert for this group.";
+                                resp.Results.Add(gr);
+                                continue;
+                            }
+
+                            header.TranDetailsColl = details;
+                            var svcUpd = new TransactionsService(true, _dbAccess);
+                            try
+                            {
+                                header.ErrorID = svcUpd.Update(header);
+                                if (header.ErrorID != 0)
+                                {
+                                    gr.Status = "error";
+                                    gr.Error = $"Update failed. ErrorID={header.ErrorID}";
+                                    resp.Results.Add(gr);
+                                    continue;
+                                }
+                            }
+                            finally
+                            {
+                                svcUpd.CloseGlobalConnection();
+                            }
+
+                            gr.HeaderID = header.ID;
+                            gr.InsertedLines = details.Count;
+                            resp.Results.Add(gr);
+                        }
+                        catch (Exception ex)
+                        {
+                            gr.Status = "error";
+                            gr.Error = ex.Message;
+                            resp.Results.Add(gr);
+                        }
+                    }
+
+                    resp.Ok = resp.Results.All(r => r.Status == "ok");
+                    return resp;
+                }
+
+                private Transactions BuildJournalHeader(int journalTypeId, int empId, int departmentId, DateTime date, string cashAccountOverride = null)
+                {
+                    var dep = new Department { ID = departmentId };
+                    dep = _dalDepartment.SelectByID(dep.ID);
+
+                    Employees e = null;
+                    if (empId > 0)
+                    {
+                        e = new Employees { EmpID = empId };
+                        e = _dalEmployee.SelectByID(e);
+                    }
+
+                    var cls = new Transactions
+                    {
+                        ID = 0,
+                        CompanyID = dep.CompanyID,
+                        TransactionTypeID = journalTypeId,          // 24 = Bank, 25 = Arka
+                        InvoiceDate = date,
+                        TransactionDate = date,
+                        DueDate = date,
+                        DepartmentID = departmentId,
+                        Value = 0,
+                        AllValue = 0,
+                        PaidValue = 0,
+                        Active = true,
+                        Reference = "",
+                        Links = "",
+                        Memo = (journalTypeId == 24 ? "Ditar Banke" : "Ditar Arke"),
+                        VATPercentID = 0,
+                        InsBy = 1
+                    };
+
+                    // Numbering
+                    var SDTable = GlobalRepository.ListSystemDataTable(_dbAccess);
+                    bool genNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
+                    if (genNo)
+                    {
+                        cls.TransactionNo = $"{DateTime.Now:ddMMyyy_HH}_{dep.DepartmentName}";
+                        cls.InvoiceNo = cls.TransactionNo;
+                    }
+                    else
+                    {
+                        cls.TransactionNo = TransactionsService.GetTransactionNo(journalTypeId, date, departmentId);
+                        cls.InvoiceNo = cls.TransactionNo;
+                    }
+
+                    // CashAccount
+                    if (!string.IsNullOrWhiteSpace(cashAccountOverride))
+                        cls.CashAccount = cashAccountOverride.Trim();
+                    else
+                    {
+                        var cashAcc = (e != null ? e.CashAccount : "") ?? "";
+                        if (string.IsNullOrWhiteSpace(cashAcc))
+                            cashAcc = OptionsData.EmployeeCashAccount;
+                        cls.CashAccount = cashAcc ?? "";
+                    }
+
+                    return cls;
+                }
+
+                #endregion*/
+
+        [HttpPost("Cash/AddLikePOS")]
+        public IActionResult Cash_AddLikePOS([FromBody] CashAddLikePOSRequest req)
+        {
+            if (req == null) return BadRequest("Body required.");
+            if (req.DepartmentID <= 0) return BadRequest("DepartmentID required.");
+            if (req.Amount == 0) return BadRequest("Amount cannot be zero.");
+            if (req.JournalTypeID is not (24 or 25))
+                return BadRequest("JournalTypeID must be 24 (Bank) or 25 (Arka).");
+
+            var today = DateTime.Today;
+            var date = (req.Date?.Date) ?? today;
+            if (date != today)
+                return BadRequest("Only today's date is supported by this endpoint.");
+
+            // ===== BANK (24) — unchanged from your current logic =====
+            if (req.JournalTypeID == 24)
+            {
+                if (string.IsNullOrWhiteSpace(req.CashAccount))
+                    return BadRequest("CashAccount is required when JournalTypeID=24 (Bank).");
+
+                var headerIdBank = GetBankJournalID(req.CashAccount.Trim(), req.DepartmentID);
+                if (headerIdBank <= 0) return StatusCode(500, "Failed to open/find BANK header for the given account.");
+
+                var tranBank = TransactionsService.SelectByID(new Transactions { ID = headerIdBank });
+                if (tranBank == null || tranBank.ID == 0) return NotFound("Bank journal header not found.");
+
+                var detBank = BuildCashDetailLikePOS(req.DetailsType, Math.Abs(req.Amount), req.Description, req.PaymentID);
+                detBank.TransactionID = tranBank.ID;
+                tranBank.TranDetailsColl = new List<TransactionsDetails> { detBank };
+
+                var svcBank = new TransactionsService(true, _dbAccess);
+                try
+                {
+                    var err = svcBank.Update(tranBank);
+                    if (err != 0) return StatusCode(500, $"Update failed. ErrorID={err}");
+                }
+                finally { svcBank.CloseGlobalConnection(); }
+
+                return Ok(new
+                {
+                    ok = true,
+                    cashJournalId = tranBank.ID,
+                    transactionTypeId = tranBank.TransactionTypeID,
+                    terminId = (string?)null,
+                    dateUsed = today.ToString("yyyy-MM-dd"),
+                    departmentId = tranBank.DepartmentID,
+                    cashAccount = tranBank.CashAccount,
+                    transactionNo = tranBank.TransactionNo,
+                    invoiceNo = tranBank.InvoiceNo,
+                    insertedLines = 1,
+                    line = new
+                    {
+                        detailsType = req.DetailsType,
+                        signedAmount = detBank.Value,
+                        description = detBank.ItemName,
+                        linkedPaymentID = req.PaymentID
+                    }
+                });
+            }
+
+            Employees emp;
+
+            int empIdFromRef;
+            if (!string.IsNullOrWhiteSpace(req.Reference) &&
+                int.TryParse(req.Reference.Trim(), out empIdFromRef) &&
+                empIdFromRef > 0 &&
+                req.Reference.Trim() != "1" && req.Reference.Trim() != "2")
+            {
+                emp = _dalEmployee.SelectByID(new Employees { EmpID = empIdFromRef });
+            }
+            else
+            {
+                int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var tmpEmp1) ? tmpEmp1 : 0;
+                int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var tmpEmp2) ? tmpEmp2 : 0;
+
+                int pick;
+                if (!string.IsNullOrEmpty(req.Reference) && req.Reference.Trim() == "1" && emp1 > 0) pick = emp1;
+                else if (!string.IsNullOrEmpty(req.Reference) && req.Reference.Trim() == "2" && emp2 > 0) pick = emp2;
+                else pick = emp1 > 0 ? emp1 : emp2;
+
+                emp = _dalEmployee.SelectByID(new Employees { EmpID = pick });
+            }
+
+            if (emp == null || emp.EmpID <= 0)
+                return BadRequest($"Employee not found for reference '{req.Reference}'.");
+
+            string[] s = TerminsRepository.OpenedTerminID(emp.EmpID, req.DepartmentID);
+            GlobalAppData.TermnID = (s != null && s.Length > 0) ? s[0] : "";
+            GlobalAppData.CashJournalPOSID = (s != null && s.Length > 1) ? CommonApp.CheckForInt(s[1]) : 0;
+
+            if (GlobalAppData.TermnID.Equals(""))
+            {
+                var ttermin = GetTermins(emp.EmpID, req.DepartmentID);
+                var blltermin = new TerminsRepository();
+                blltermin.Insert(ttermin);
+            }
+
+            s = TerminsRepository.OpenedTerminID(emp.EmpID, req.DepartmentID);
+            GlobalAppData.TermnID = (s != null && s.Length > 0) ? s[0] : "";
+            GlobalAppData.CashJournalPOSID = (s != null && s.Length > 1) ? CommonApp.CheckForInt(s[1]) : 0;
+
+            if (GlobalAppData.CashJournalPOSID == 0)
+            {
+                GlobalAppData.CashJournalPOSID = NewCashTransaction(emp.EmpID, req.DepartmentID);
+                if (GlobalAppData.CashJournalPOSID == 0)
+                    return StatusCode(500, "Could not create ARKA header.");
+            }
+
+
+            if (req.PaymentID.GetValueOrDefault() > 0)
+            {
+                try
+                {
+                    // POS-paid sale -> call the same existing method
+                    PayTransaction(Math.Abs(req.Amount), req.PaymentID.Value);
+                }
+                catch (Exception ex)
+                {
+                    WriteLog("PayTransactions: " + ex.Message);
+                    return StatusCode(500, "Payment failed: " + ex.Message);
+                }
+            }
+            else
+            {
+                // free movement -> single line in today's POS header
+                var tranCash = TransactionsService.SelectByID(new Transactions { ID = GlobalAppData.CashJournalPOSID });
+                if (tranCash == null || tranCash.ID == 0) return NotFound("Cash journal header not found.");
+
+                var det = BuildCashDetailLikePOS(req.DetailsType, Math.Abs(req.Amount), req.Description, null);
+                det.TransactionID = tranCash.ID;
+                tranCash.TranDetailsColl = new List<TransactionsDetails> { det };
+
+                var svc = new TransactionsService(true, _dbAccess);
+                try
+                {
+                    var err = svc.Update(tranCash);
+                    if (err != 0) return StatusCode(500, $"Update failed. ErrorID={err}");
+                }
+                finally { svc.CloseGlobalConnection(); }
+            }
+
+            // 4) Return whatever the header has now (same effect as POS flow)
+            var respHdr = TransactionsService.SelectByID(new Transactions { ID = GlobalAppData.CashJournalPOSID });
+
+            return Ok(new
+            {
+                ok = true,
+                cashJournalId = GlobalAppData.CashJournalPOSID,
+                transactionTypeId = respHdr?.TransactionTypeID ?? 0, // should be 25
+                terminId = GlobalAppData.TermnID,
+                dateUsed = today.ToString("yyyy-MM-dd"),
+                departmentId = respHdr?.DepartmentID ?? 0,
+                cashAccount = respHdr?.CashAccount ?? "",
+                transactionNo = respHdr?.TransactionNo ?? "",
+                invoiceNo = respHdr?.InvoiceNo ?? "",
+                insertedLines = 1,
+                line = new
+                {
+                    detailsType = req.PaymentID.HasValue && req.PaymentID.Value > 0 ? 4 : req.DetailsType,
+                    signedAmount = (req.DetailsType == 3 || req.DetailsType == 6) ? -Math.Abs(req.Amount) : Math.Abs(req.Amount),
+                    description = req.PaymentID.HasValue ? "Pagese Porosi Web" :
+                                  (string.IsNullOrWhiteSpace(req.Description)
+                                    ? (req.DetailsType == 3 ? "Pagese nga furnitori"
+                                      : req.DetailsType == 4 ? "Arketim nga konsumatori"
+                                      : req.DetailsType == 5 ? "Mandat Arketimi (Depozitë)"
+                                      : req.DetailsType == 6 ? "Mandat Pagese (Tërheqje)"
+                                      : "Lëvizje arke/banke")
+                                    : req.Description.Trim()),
+                    linkedPaymentID = req.PaymentID
+                }
+            });
+        }
+
+        private static TransactionsDetails BuildCashDetailLikePOS(int detailsType, decimal amountAbs, string? description, int? paymentId)
+        {
+            var sign = (detailsType == 3 || detailsType == 6) ? -1m : 1m;
+            var value = amountAbs * sign;
+
+            string desc = !string.IsNullOrWhiteSpace(description)
+                ? description.Trim()
+                : detailsType switch
+                {
+                    3 => "Pagese nga furnitori",
+                    4 => "Arketim nga konsumatori",
+                    5 => "Mandat Arketimi (Depozitë)",
+                    6 => "Mandat Pagese (Tërheqje)",
+                    _ => "Lëvizje arke/banke"
+                };
+
+            var d = new TransactionsDetails
+            {
+                ID = 0,
+                DetailsType = detailsType,     // 3,4,5,6
+                ItemID = desc,
+                ItemName = desc,
+                Quantity = 1,
+                Price = value,
+                Value = value,
+                Mode = 1
+            };
+            if (paymentId.GetValueOrDefault() > 0)
+                d.PaymentID = paymentId.Value;
+
+            return d;
+        }
+
+        private Employees ResolveShiftEmployee(string? reference)
+        {
+            int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var e1) ? e1 : 0;
+            int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var e2) ? e2 : 0;
+
+            // support numeric EmpID directly (besides shift "1"/"2")
+            if (!string.IsNullOrWhiteSpace(reference) &&
+                int.TryParse(reference.Trim(), out var asEmpId) &&
+                asEmpId > 0 &&
+                reference.Trim() != "1" && reference.Trim() != "2")
+            {
+                return _dalEmployee.SelectByID(new Employees { EmpID = asEmpId });
+            }
+
+            int pick = 0;
+            if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "1" && emp1 > 0) pick = emp1;
+            else if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "2" && emp2 > 0) pick = emp2;
+            else pick = emp1 > 0 ? emp1 : emp2;
+
+            if (pick <= 0)
+                throw new InvalidOperationException("No shift employee configured (EmpNderrimi1/2).");
+
+            return _dalEmployee.SelectByID(new Employees { EmpID = pick }); // <-- use pick, not int.Parse(reference)
+        }
+
+
+        private (string terminId, int cashJournalId) EnsureTerminCashHeader(
+     int departmentID,
+     string? reference,
+     int empIdOverride,
+     DateTime date,
+     string cashAccount,
+     int journalTypeId
+ )
+        {
+            var wantToday = date.Date == DateTime.Now.Date;
+
+            // === Path 1: TODAY -> keep your existing Termin logic ===
+            if (wantToday)
+            {
+                var s = TerminsRepository.OpenedTerminID(empIdOverride, departmentID);
+                string terminId = (s != null && s.Length > 0) ? s[0] : "";
+                int cashJournalId = (s != null && s.Length > 1) ? CommonApp.CheckForInt(s[1]) : 0;
+
+                bool needNew = true;
+
+                if (!string.IsNullOrEmpty(terminId) && cashJournalId > 0)
+                {
+                    var hdr = TransactionsService.SelectByID(new Transactions { ID = cashJournalId });
+                    if (hdr != null && hdr.ID > 0 &&
+                        hdr.TransactionTypeID == journalTypeId &&
+                        hdr.DepartmentID == departmentID &&
+                        (hdr.CashAccount ?? "").Trim() == (cashAccount ?? "").Trim() &&
+                        hdr.TransactionDate.Date == date.Date)
+                    {
+                        needNew = false;
+                    }
+                }
+
+                if (needNew)
+                {
+                    var ttermin = GetTermins(empIdOverride, departmentID);
+                    var blltermin = new TerminsRepository();
+                    blltermin.Insert(ttermin);
+
+                    var s2 = TerminsRepository.OpenedTerminID(empIdOverride, departmentID);
+                    terminId = (s2 != null && s2.Length > 0) ? s2[0] : "";
+                    cashJournalId = (s2 != null && s2.Length > 1) ? CommonApp.CheckForInt(s2[1]) : 0;
+                }
+
+                GlobalAppData.TermnID = terminId;
+                GlobalAppData.CashJournalPOSID = cashJournalId;
+                return (terminId, cashJournalId);
+            }
+
+            // === Path 2: NOT TODAY -> bypass Termin; find or create header for (date, account, dept, type) ===
+            int companyID = _dalDepartment.SelectByID(departmentID).CompanyID;
+            int headerId = _dbAccess.CashJournalIDByCashAccount(cashAccount, journalTypeId, date, companyID); // make sure this overload takes 'date'
+            if (headerId == 0)
+            {
+                headerId =  NewCashTransaction(empIdOverride, departmentID);
+            }
+
+            // we don't have a Termin for back-dated headers; return empty terminId
+            return ("", headerId);
+        }
+
+
         [HttpPost("FilesImport")]
         [RequestSizeLimit(1024L * 1024L * 200L)]
         [Consumes("multipart/form-data")]
@@ -1093,1057 +1622,6 @@ namespace FinabitAPI.Controllers
             }
             return rows;
         }
-
-        //private void PrintInvoiceTotal(Transactions t, bool isSelectedPayment, int Mode, string POSUserName, string[] pr, string TableName, DataTable SDTable, List<ItemLocation> ILList, bool chkChecked)
-        //{
-        //    DataTable dtTransaction = new DataTable();
-        //    dtTransaction.TableName = "Transaction";
-        //    //TransactionNo
-        //    DataColumn col = new DataColumn("TransactionNo", typeof(string));
-        //    col.DefaultValue = t.TransactionNo;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("Value", typeof(decimal));
-        //    col.DefaultValue = t.Value;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("VATValue", typeof(decimal));
-        //    col.DefaultValue = t.VATValue;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //TableName
-        //    col = new DataColumn("TableName", typeof(string));
-        //    col.DefaultValue = TableName;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //isSelectedPayment
-        //    col = new DataColumn("IsPayment", typeof(bool));
-        //    col.DefaultValue = isSelectedPayment;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //LUN
-        //    col = new DataColumn("LUN", typeof(int));
-        //    col.DefaultValue = t.LUN;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("VATPercent", typeof(decimal));
-        //    col.DefaultValue = t.VATPercent;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("PartnerName", typeof(string));
-        //    col.DefaultValue = t.PartnerName;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("TableID", typeof(string));
-        //    col.DefaultValue = t.TableID;
-        //    dtTransaction.Columns.Add(col);
-
-        //    DataRow trow = dtTransaction.NewRow();
-        //    dtTransaction.Rows.Add(trow);
-
-        //    DataTable tdDetails = new DataTable();
-        //    tdDetails.TableName = "Details";
-        //    col = new DataColumn("ItemName", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Quantity", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATPrice", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Price", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATPriceValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Value", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("SalesValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("LocationID", typeof(int));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("ItemID", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("DetailsMode", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("LocationID2", typeof(int));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Memo", typeof(string));
-        //    tdDetails.Columns.Add(col);
-        //    DataRow row;
-
-        //    foreach (TransactionsDetails d in t.TranDetailsColl)
-        //    {
-
-        //        row = tdDetails.NewRow();
-        //        row["ItemName"] = d.ItemName;
-        //        row["Quantity"] = d.Quantity;
-        //        row["VATPrice"] = d.VATPrice;
-        //        row["Price"] = d.Price;
-        //        row["Value"] = d.Value;
-        //        row["VATPriceValue"] = d.VATPrice * d.Quantity;
-
-        //        row["LocationID"] = d.LocationID;
-        //        row["ItemID"] = d.ItemID;
-        //        row["DetailsMode"] = d.Mode;
-        //        row["LocationID2"] = d.LocationID2;
-        //        row["Memo"] = d.Memo;
-        //        tdDetails.Rows.Add(row);
-
-        //    }
-        //    //DataView dv = new DataView(tdDetails);
-        //    //dv.Sort = "Memo";
-        //    //DataTable dt1 = dv.ToTable();
-        //    //string Memo="";
-        //    //string itemName="";
-        //    //DataTable details = tdDetails.Clone();
-
-
-        //    //foreach (DataRow rw in dt1.Rows)
-        //    //{
-        //    //    Memo = rw["Memo"].ToString();
-        //    //    itemName=Memo+"[";
-        //    //    if (rw["Memo"] != "" && rw["Memo"] == Memo)
-        //    //    {
-        //    //        rw["ItemName"] += rw["Quantity"] + " " + rw["ItemName"] + ",";
-        //    //    }
-        //    //    else
-        //    //    {
-
-        //    //    }
-        //    //}
-        //    DataTable details = tdDetails.Clone();
-        //    try
-        //    {
-        //        var distinctRows = tdDetails.DefaultView.ToTable(true, "Memo").Rows.OfType<DataRow>().Select(k => k[0] + "").ToArray();
-        //        foreach (string name in distinctRows)
-        //        {
-        //            var rows = tdDetails.Select("Memo = '" + name + "' AND Memo <>''");
-        //            string value = "";
-        //            int i = 0;
-        //            foreach (DataRow rw in rows)
-        //            {
-        //                if (rw["Memo"].ToString() != "")
-        //                {
-        //                    value += string.Format("{0:0.##}", Convert.ToDecimal(rw["Quantity"])) + "x " + rw["ItemName"] + ",";
-        //                }
-        //                else
-        //                {
-        //                    value = rw["ItemName"].ToString();
-        //                }
-        //                i++;
-        //                if (i == rows.Length)
-        //                {
-        //                    if (rw["Memo"].ToString() != "")
-        //                    {
-        //                        rw["ItemName"] = name.Split('-')[0] + "[" + value.Trim(',') + "]";
-        //                        rw["Quantity"] = 1;
-        //                    }
-        //                    else
-        //                    {
-        //                        rw["ItemName"] = rw["ItemName"];
-        //                    }
-        //                    details.ImportRow(rw);
-        //                }
-        //            }
-
-        //            //value =name+"["+ value.Trim(',')+"]";
-        //            //Users_GetLoginUserByPIN("Deri qetu mire");
-
-        //            //details.Rows.Add(name, value);
-        //            value = "";
-
-
-        //        }
-        //        foreach (DataRow rw in tdDetails.Rows)
-        //        {
-        //            if (rw["Memo"].ToString() == "")
-        //            {
-        //                details.ImportRow(rw);
-        //            }
-        //        }
-        //        //Users_GetLoginUserByPIN("Numri i rreshtave te detajeve per printim: " + details.Rows.Count.ToString());
-        //    }
-        //    catch (Exception ex) { /*Users_GetLoginUserByPIN(ex.Message);*/ }
-
-
-        //    PrintInvoice(t.ID, dtTransaction, details, Mode, POSUserName, pr, SDTable, ILList, chkChecked, true);
-        //}
-
-        bool UpdateSubOrderReceived = true;
-
-
-        #region PrintInvoice
-
-        //private void PrintInvoice(Transactions t, bool isSelectedPayment, int Mode, string POSUserName, string[] pr, string TableName, DataTable SDTable, List<ItemLocation> ILList, bool chkChecked, bool PrintALl)
-        //{
-        //    if (!printTermik)
-        //        return;
-
-        //    DataTable dtTransaction = new DataTable();
-        //    dtTransaction.TableName = "Transaction";
-        //    //TransactionNo
-        //    DataColumn col = new DataColumn("TransactionNo", typeof(string));
-        //    col.DefaultValue = t.TransactionNo;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("Value", typeof(decimal));
-        //    col.DefaultValue = t.Value;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("VATValue", typeof(decimal));
-        //    col.DefaultValue = t.VATValue;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //TableName
-        //    col = new DataColumn("TableName", typeof(string));
-        //    col.DefaultValue = TableName;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //isSelectedPayment
-        //    col = new DataColumn("IsPayment", typeof(bool));
-        //    col.DefaultValue = isSelectedPayment;
-        //    dtTransaction.Columns.Add(col);
-
-        //    //LUN
-        //    col = new DataColumn("LUN", typeof(int));
-        //    col.DefaultValue = t.LUN;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("VATPercent", typeof(decimal));
-        //    col.DefaultValue = t.VATPercent;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("PartnerName", typeof(string));
-        //    col.DefaultValue = t.PartnerName;
-        //    dtTransaction.Columns.Add(col);
-
-        //    col = new DataColumn("TableID", typeof(string));
-        //    col.DefaultValue = t.TableID;
-        //    dtTransaction.Columns.Add(col);
-
-        //    DataRow trow = dtTransaction.NewRow();
-        //    dtTransaction.Rows.Add(trow);
-
-        //    DataTable tdDetails = new DataTable();
-        //    tdDetails.TableName = "Details";
-        //    col = new DataColumn("ItemName", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Quantity", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATPrice", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Price", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATPriceValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Value", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("VATValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("SalesValue", typeof(decimal));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("LocationID", typeof(int));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("ItemID", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("DetailsMode", typeof(string));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("LocationID2", typeof(int));
-        //    tdDetails.Columns.Add(col);
-
-        //    col = new DataColumn("Memo", typeof(string));
-        //    tdDetails.Columns.Add(col);
-        //    DataRow row;
-
-        //    foreach (TransactionsDetails d in t.TranDetailsColl)
-        //    {
-        //        if (isSelectedPayment || d.Mode == 1 || OptionsData.UseSubOrders)
-        //        {
-        //            String memo = "";
-        //            if (!String.IsNullOrEmpty(d.Memo))
-        //            {
-        //                memo = " [" + d.Memo + "]";
-        //            }
-
-        //            row = tdDetails.NewRow();
-        //            row["ItemName"] = d.ItemName + memo;
-        //            row["Quantity"] = d.Quantity;
-        //            row["VATPrice"] = d.VATPrice;
-        //            row["Price"] = d.Price;
-        //            row["Value"] = d.Value;
-        //            row["VATPriceValue"] = d.VATPrice * d.Quantity;
-
-        //            row["LocationID"] = d.LocationID;
-        //            row["ItemID"] = d.ItemID;
-        //            row["DetailsMode"] = d.Mode;
-        //            row["LocationID2"] = d.LocationID2;
-        //            row["Memo"] = d.Memo;
-        //            tdDetails.Rows.Add(row);
-        //        }
-        //    }
-        //    //DataView dv = new DataView(tdDetails);
-        //    //dv.Sort = "Memo";
-        //    //DataTable dt1 = dv.ToTable();
-        //    //string Memo="";
-        //    //string itemName="";
-        //    //DataTable details = tdDetails.Clone();
-
-
-        //    //foreach (DataRow rw in dt1.Rows)
-        //    //{
-        //    //    Memo = rw["Memo"].ToString();
-        //    //    itemName=Memo+"[";
-        //    //    if (rw["Memo"] != "" && rw["Memo"] == Memo)
-        //    //    {
-        //    //        rw["ItemName"] += rw["Quantity"] + " " + rw["ItemName"] + ",";
-        //    //    }
-        //    //    else
-        //    //    {
-
-        //    //    }
-        //    //}
-        //    //  DataTable details = tdDetails.Clone();
-        //    //try
-        //    //{
-        //    //    var distinctRows = tdDetails.DefaultView.ToTable(true, "Memo").Rows.OfType<DataRow>().Select(k => k[0] + "").ToArray();
-        //    //    foreach (string name in distinctRows)
-        //    //    {
-        //    //        var rows = tdDetails.Select("Memo = '" + name + "' AND Memo <>''");
-        //    //        string value = "";
-        //    //        int i = 0;
-        //    //        foreach (DataRow rw in rows)
-        //    //        {
-        //    //            if (rw["Memo"].ToString() != "")
-        //    //            {
-        //    //                value += string.Format("{0:0.##}", Convert.ToDecimal(rw["Quantity"])) + "x " + rw["ItemName"] + ",";
-        //    //            }
-        //    //            else
-        //    //            {
-        //    //                value = rw["ItemName"].ToString();
-        //    //            }
-        //    //            i++;
-        //    //            if (i == rows.Length)
-        //    //            {
-        //    //                if (rw["Memo"].ToString() != "")
-        //    //                {
-        //    //                    rw["ItemName"] = name.Split('-')[0] + "[" + value.Trim(',') + "]";
-        //    //                    rw["Quantity"] = 1;
-        //    //                }
-        //    //                else
-        //    //                {
-        //    //                    rw["ItemName"] = rw["ItemName"];
-        //    //                }
-        //    //                details.ImportRow(rw);
-        //    //            }
-        //    //        }
-
-        //    //        //value =name+"["+ value.Trim(',')+"]";
-        //    //        //Users_GetLoginUserByPIN("Deri qetu mire");
-
-        //    //        //details.Rows.Add(name, value);
-        //    //        value = "";
-
-
-        //    //    }
-        //    //    foreach (DataRow rw in tdDetails.Rows)
-        //    //    {
-        //    //        if (rw["Memo"].ToString() == "")
-        //    //        {
-        //    //            details.ImportRow(rw);
-        //    //        }
-        //    //    }
-        //    //    //Users_GetLoginUserByPIN("Numri i rreshtave te detajeve per printim: " + details.Rows.Count.ToString());
-        //    //}
-        //    //catch (Exception ex) { /*Users_GetLoginUserByPIN(ex.Message);*/ }
-
-
-        //    PrintInvoice(t.ID, dtTransaction, tdDetails, Mode, POSUserName, pr, SDTable, ILList, chkChecked, PrintALl);
-        //}
-
-        #endregion
-
-        #region RaportetExtremPica
-        //public void PrintInvoice(int TranID, DataTable t, DataTable td, int Mode, string UserName, string[] printers, DataTable SDTable, List<ItemLocation> ILList, bool chkChecked, bool PrintAll)
-        //{
-        //    if (!printTermik)
-        //    {
-        //        return;
-        //    }
-
-        //    WriteLog("PrintInvoice");
-        //    //Users_GetLoginUserByPIN("u thirr PrintInvoice ");
-
-        //    try
-        //    {
-        //        if (!OptionsData.UseSubOrders || 1 == 1)
-        //        {
-        //            WriteLog("usesuborders");
-
-        //            string PrinterDefault = "0";
-
-        //            try
-        //            {
-        //                PrinterDefault = _configuration["AppSettings:PrinterDefault"] ?? "0";
-
-        //            }
-        //            catch { PrinterDefault = "0"; }
-        //            string reportPath = Path.Combine(Directory.GetCurrentDirectory(), "ReportDoc");
-        //            ReportDocument rptc = new ReportDocument();
-        //            if (OptionsData.POSVAT != 0 && bool.Parse(t.Rows[0]["IsPayment"].ToString()))
-        //            {
-        //                WriteLog("PrinterDefault" + PrinterDefault);
-
-        //                if (PrinterDefault == "0")
-        //                {
-        //                    string invoiceReportPath = Path.Combine(reportPath, "rptInvoiceWithVAT.rpt");
-        //                    rptc.Load(invoiceReportPath);
-        //                    // rptc = new rptInvoiceWithVAT();
-        //                }
-        //                else
-        //                {
-        //                    string invoiceReportPath = Path.Combine(reportPath, "rptInvoiceWithVAT2.rpt");
-        //                    rptc.Load(invoiceReportPath);
-        //                    // rptc = new rptInvoiceWithVAT2();
-        //                }
-        //                ReportFactory.GetReportDoc(rptc.GetType());
-        //                try
-        //                {
-        //                    TextObject txtPartner = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtPartner"]);
-        //                    txtPartner.Text = t.Rows[0]["PartnerName"].ToString();
-        //                    TextObject lblPartner = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["lblPartner"]);
-        //                    lblPartner.Width = t.Rows[0]["PartnerName"].ToString() == "" ? 0 : txtPartner.Width;
-
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    WriteLog("1355" + ex.Message);
-
-        //                }
-
-
-        //            }
-        //            else
-        //            {
-        //                if (PrinterDefault == "0")
-        //                {
-        //                    rptc.Load(Path.Combine(reportPath, "rptInvoice.rpt"));
-        //                    //  rptc = new rptInvoice();
-        //                }
-        //                else
-        //                {
-        //                    rptc.Load(Path.Combine(reportPath, "rptInvoice1.rpt"));
-
-        //                    // rptc = new rptInvoice1();
-        //                }
-        //                ReportFactory.GetReportDoc(rptc.GetType());
-        //            }
-        //            DataTable dt1 = SDTable;
-        //            DataTable dt2 = t;
-        //            DataTable dt3 = td;
-
-        //            decimal Value = 0;
-        //            decimal VATValue = 0;
-
-        //            foreach (DataRow row1 in dt3.Rows)
-        //            {
-        //                Value += Convert.ToDecimal(row1["Price"].ToString()) * Convert.ToDecimal(row1["Quantity"].ToString());
-        //                VATValue += (Convert.ToDecimal(row1["VATPrice"].ToString()) - Convert.ToDecimal(row1["Price"].ToString())) * Convert.ToDecimal(row1["Quantity"].ToString());
-        //            }
-
-        //            dt2.Rows[0]["Value"] = Value;
-        //            dt2.Rows[0]["VATValue"] = VATValue;
-
-        //            dt3.AcceptChanges();
-
-        //            if (dt3.Rows.Count != 0 && !OptionsData.UseSubOrders)
-        //            {
-        //                rptc.Database.Tables["spSystemList;1"].SetDataSource(dt1);
-        //                rptc.Database.Tables["spTransactionsByID;1"].SetDataSource(dt2);
-        //                rptc.Database.Tables["spTransactionsDetailsByID;1"].SetDataSource(dt3);
-
-
-
-        //                TextObject txtUserName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtUserName"]);
-        //                txtUserName.Text = UserName;
-        //                TextObject txtTableName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTableName"]);
-
-        //                txtTableName.Text = t.Rows[0]["TableName"].ToString();
-        //                FieldObject sfTime = ((FieldObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["sfTime"]);
-
-        //                if (!OptionsData.ShowTimeAtPOSInvoice)
-        //                {
-        //                    sfTime.Width = 0;
-        //                }
-
-        //                TextObject Fatura = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //                TextObject OrderNo = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtOrderNo"]);
-        //                TextObject txtTranNo = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTranNo"]);
-        //                TextObject Copy = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Copy"]);
-
-
-
-
-
-        //                DataRow[] dtr = dt2.Select();
-        //                if (!Convert.ToBoolean(t.Rows[0]["IsPayment"].ToString()))
-        //                {
-
-        //                    if (Mode == 1)
-        //                    {
-        //                        OrderNo.Text = "/1";
-        //                    }
-        //                    else
-        //                    {
-        //                        OrderNo.Text = "/" + (int.Parse(dtr[0]["LUN"].ToString()) + 1).ToString();
-        //                    }
-        //                    txtTranNo.Text = "Nr. Porosisë:";
-        //                    Fatura.Text = "POROSI";
-        //                    Copy.Width = 0;
-
-        //                }
-        //                else
-        //                {
-        //                    Fatura.Text = "FATURË";
-        //                    txtTranNo.Text = "Nr. Faturës:";
-        //                    OrderNo.Text = "";
-        //                    Copy.Width = 0;
-        //                }
-
-
-
-        //                // rastet kur perfshihet edhe printeri 1 mi shtyp krejt rreshtat
-        //                string PrintAllOrdersInPlaceOfInvoice = "0";
-        //                try
-        //                {
-        //                    PrintAllOrdersInPlaceOfInvoice = System.Configuration.ConfigurationManager.AppSettings["PrintAllOrdersInPlaceOfInvoice"];
-        //                }
-        //                catch { PrintAllOrdersInPlaceOfInvoice = "0"; }
-
-
-
-
-
-
-        //                try
-        //                {
-        //                    if (printers[0] != string.Empty)
-        //                    {
-        //                        if (Fatura.Text != "POROSI" && PrintAllOrdersInPlaceOfInvoice == "0")
-        //                        {
-        //                            WriteLog("Printeri 0 ne printinvoice");
-
-        //                            rptc.PrintOptions.PrinterName = printers[0];
-        //                            rptc.PrintToPrinter(1, true, 0, 0);
-        //                            // GetServerTime();
-        //                        }
-
-        //                    }
-        //                }
-        //                catch (Exception ex)
-        //                {
-
-        //                    WriteLog("1477" + ex.Message);
-        //                }
-
-        //                // Per porosi neper lokacione
-        //                if (Mode == 1)
-        //                {
-        //                    OrderNo.Text = "/1";
-        //                }
-        //                else
-        //                {
-        //                    OrderNo.Text = "/" + (int.Parse(dtr[0]["LUN"].ToString()) + 1).ToString();
-        //                }
-
-        //                txtTranNo.Text = "Nr. Porosisë:";
-        //                Fatura.Text = "POROSI";
-        //                Copy.Width = 0;
-
-        //                string[] args = { txtUserName.Text, txtTableName.Text, Fatura.Text, OrderNo.Text, txtTranNo.Text };
-
-        //                try
-        //                {
-
-        //                    AllocateOrder(GetReportClassForLocation(args, dt1), dt2, dt3, printers, ILList, TranID, PrintAll);
-
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    WriteLog(ex.Message);
-        //                }
-        //                //AllocateOrder(rptc, dt2, dt3, printers);
-        //                rptc.Close();
-        //                rptc.Dispose();
-        //            }
-        //        }
-        //        else
-        //        {
-        //            #region SubOrders
-        //            ReportClass rptc = new ReportClass();
-
-        //            //decimal Value;
-        //            DataTable Tab;
-        //            string LocationName = "";
-        //            Tab = new DataTable();
-        //            Tab = t.Clone();
-        //            DataTable dtShank;
-        //            DataTable dtKuzhina;
-        //            DataRow[] rows1 = null;
-        //            DataRow[] rows2 = null;
-
-        //            rows1 = td.Select("LocationID<>2 AND DetailsMode=1");
-        //            rows2 = td.Select("LocationID=2");
-
-        //            dtShank = td.Clone();
-        //            dtKuzhina = td.Clone();
-        //            if (rows1 != null && rows1.Length > 0)
-        //            {
-        //                foreach (DataRow item in rows1)
-        //                {
-        //                    dtShank.ImportRow(item);
-        //                }
-        //            }
-        //            if (rows2 != null && rows2.Length > 0)
-        //            {
-        //                foreach (DataRow item in rows2)
-        //                {
-        //                    dtKuzhina.ImportRow(item);
-        //                }
-        //            }
-        //            //Users_GetLoginUserByPIN(dtShank.Rows.Count.ToString());
-        //            //Users_GetLoginUserByPIN(dtKuzhina.Rows.Count.ToString());
-        //            if (dtShank.Rows.Count > 0)
-        //            {
-        //                WriteLog("Shank");
-
-        //                ItemLocation il = new ItemLocation();
-        //                il.ID = 1;
-        //                il = DALItemLocation.SelectByID(il);
-        //                //Fatura.Text = FatName + "\n( " + il.Name + " )";
-        //                DataTable dt1 = SDTable;//BLLSystemData.ListSystemDataTable();
-        //                DataTable dt2 = BLLTransactions.SelectDataTableByID(TranID);
-
-        //                DataTable dt3 = dtShank;
-        //                rptc = new rptInvoiceSubOrderShank();
-        //                ReportFactory.GetReportDoc(rptc.GetType());
-        //                try
-        //                {
-        //                    TextObject Fatura = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //                    string FatName = Fatura.Text;
-        //                    TextObject Fatura1 = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //                    Fatura1.Text = FatName + "\n( " + il.Name + " )";
-        //                    TextObject txtUserName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtUserName"]);
-        //                    txtUserName.Text = GlobalAppData.POSUserName;
-        //                    TextObject txtTableName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTableName"]);
-        //                    //  BELayer.Tables tb = new BELayer.Tables();
-        //                    //  tb.ID = Convert.ToInt32(dt2.Rows[0]["TableID"].ToString());
-        //                    txtTableName.Text = "table";// BLLTables.SelectByID(tb).TableName;
-        //                }
-        //                catch
-        //                {
-
-        //                }
-
-
-        //                rptc.Database.Tables["spSystemList;1"].SetDataSource(dt1);
-        //                rptc.Database.Tables["spTransactionsByID;1"].SetDataSource(dt2);
-
-        //                rptc.Database.Tables["spTransactionsDetailsByID;1"].SetDataSource(dtShank);
-
-        //                if (printers[2] != "" && dt3.Rows.Count > 0)
-        //                {
-        //                    String print = printers[2];
-        //                    rptc.PrintOptions.PrinterName = print; //printers[2].ToString();
-        //                                                           //CommonApp.SetDefaultPrinter(FINA.Properties.Settings.Default.Printer2);
-        //                    rptc.PrintToPrinter(1, true, 0, 0);
-        //                }
-        //            }
-        //            if (dtKuzhina.Rows.Count > 0)
-        //            {
-        //                WriteLog("Kuzhina");
-
-        //                int LastSuborderID = BLLTransactionsDetails.GetLastSubOrder(TranID);
-
-        //                ItemLocation il = new ItemLocation();
-        //                il.ID = 2;
-        //                il = DALItemLocation.SelectByID(il);
-
-        //                DataTable dt1 = SDTable;//BLLSystemData.ListSystemDataTable();
-
-
-        //                DataTable dt2 = BLLTransactions.SelectDataTableByID(TranID);
-
-        //                PrintAll = PrintAll && !(TranID > 0 && LastSuborderID > 1);//!chkPrintoNenporosine.Visible;
-        //                DataTable dt3 = null;
-        //                try
-        //                {
-
-        //                    dt3 = BLLTransactionsDetails.GetDetailsReportSubOrder(TranID, PrintAll);
-
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    //Users_GetLoginUserByPIN(ex.Message);
-        //                }
-
-
-        //                if (!PrintAll || (dt3.Rows.Count > 0 && Convert.ToInt32(dt3.Rows[0]["SubOrderID"].ToString()) > 1) && Convert.ToBoolean(dt3.Rows[0]["Printed"]) == true)
-        //                {
-
-        //                    rptc = new rptInvoiceSubOrder2();
-        //                }
-        //                else if (PrintAll || (dt3.Rows.Count > 0 && Convert.ToInt32(dt3.Rows[0]["SubOrderID"].ToString()) > 1))
-        //                {
-
-        //                    rptc = new rptInvoiceSubOrder();
-        //                }
-        //                TextObject Fatura = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //                string FatName = Fatura.Text;
-        //                TextObject Fatura1 = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //                if (PrintAll)
-        //                {
-        //                    Fatura1.Text = FatName + "\n( " + il.Name + " )";
-        //                }
-        //                else
-        //                {
-
-        //                    if (dt3.Rows.Count > 0 && (TranID > 0 && LastSuborderID > 1) && Convert.ToBoolean(dt3.Rows[0]["Printed"]) == true)
-        //                    {
-        //                        Fatura1.Text = "Nënporosia " + LastSuborderID + " " + "\n( " + il.Name + " )";
-        //                    }
-        //                }
-
-        //                TextObject txtUserName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtUserName"]);
-        //                txtUserName.Text = GlobalAppData.POSUserName;
-        //                TextObject txtTableName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTableName"]);
-        //                //   BELayer.Tables tb = new BELayer.Tables();
-        //                // tb.ID = Convert.ToInt32(dt2.Rows[0]["TableID"].ToString());
-        //                txtTableName.Text = "table";// BLLTables.SelectByID(tb).TableName;
-        //                rptc.Database.Tables["spSystemList;1"].SetDataSource(dt1);
-        //                rptc.Database.Tables["spTransactionsByID;1"].SetDataSource(dt2);
-
-        //                rptc.Database.Tables["spTransactionsDetailsByID;1"].SetDataSource(dt3);
-
-        //                if (printers[3] != "")
-        //                {
-
-        //                    if (chkChecked || !(TranID > 0 && LastSuborderID > 1))
-        //                    {
-        //                        try
-        //                        {
-        //                            rptc.PrintOptions.PrinterName = printers[3];
-        //                            DataTable dt4 = BLLTransactionsDetails.GetDetailsReportSubOrder(TranID, PrintAll);
-        //                            //CommonApp.SetDefaultPrinter(FINA.Properties.Settings.Default.Printer3);
-        //                            if (dt4.Rows.Count > 0)
-        //                            {
-        //                                WriteLog(printers[3]);
-
-        //                                rptc.PrintToPrinter(1, true, 0, 0);
-        //                                if (printers[2] != "")
-        //                                {
-        //                                    WriteLog(printers[2]);
-
-        //                                    rptc.PrintOptions.PrinterName = printers[2];
-        //                                    //CommonApp.SetDefaultPrinter(FINA.Properties.Settings.Default.Printer2);
-        //                                    rptc.PrintToPrinter(1, true, 0, 0);
-        //                                }
-        //                            }
-
-        //                        }
-        //                        catch (Exception ex)
-        //                        {
-        //                            WriteLog("1683" + ex.Message);
-
-        //                        }
-        //                    }
-        //                    else if ((TranID > 0 && LastSuborderID > 1) && !chkChecked)
-        //                    {
-        //                        rptc = new rptInvoiceSubOrder2();
-        //                        DataTable dtt1 = DALGlobal.ListSystemDataTable();
-        //                        DataTable dtt2 = BLLTransactions.SelectDataTableByID(TranID);
-        //                        DataTable dtt3 = BLLTransactionsDetails.GetUnprintedDetails(TranID);
-
-
-        //                        rptc.Database.Tables["spSystemList;1"].SetDataSource(dtt1);
-        //                        rptc.Database.Tables["spTransactionsByID;1"].SetDataSource(dtt2);
-
-        //                        rptc.Database.Tables["spTransactionsDetailsByID;1"].SetDataSource(dtt3);
-        //                        if (dtt3.Rows.Count > 0)
-        //                        {
-        //                            TextObject Fatura11 = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-
-        //                            Fatura11.Text = FatName + "\n( " + il.Name + " )";
-        //                            WriteLog("1704" + printers[3]);
-
-        //                            rptc.PrintOptions.PrinterName = printers[3];
-
-        //                            //CommonApp.SetDefaultPrinter(FINA.Properties.Settings.Default.Printer3);
-
-        //                            rptc.PrintToPrinter(1, true, 0, 0);
-
-        //                            try
-        //                            {
-        //                                if (printers[2] != "")
-        //                                {
-
-        //                                    rptc.PrintOptions.PrinterName = printers[2];
-        //                                    //CommonApp.SetDefaultPrinter(FINA.Properties.Settings.Default.Printer2);
-        //                                    if (dt3.Rows.Count > 0)
-        //                                    {
-        //                                        rptc.PrintToPrinter(1, true, 0, 0);
-        //                                    }
-        //                                }
-        //                            }
-        //                            catch (Exception ex)
-        //                            {
-        //                                WriteLog("1726" + ex.Message);
-
-        //                            }
-        //                            BLLTransactionsDetails.MakeTransactionPrinted(TranID);
-        //                        }
-        //                    }
-        //                }
-
-        //            }
-        //            UpdateSubOrderReceived = !(TranID > 0 && BLLTransactionsDetails.GetLastSubOrder(TranID) > 1);
-        //            //if ((TranID > 0 && BLLTransactionsDetails.GetLastSubOrder(TranID) > 1))
-        //            //{
-
-        //            //}
-        //            //Users_GetLoginUserByPIN(UpdateSubOrderReceived.ToString() + "," + chkChecked.ToString());
-        //            if (OptionsData.UseSubOrders && (UpdateSubOrderReceived || chkChecked))
-        //            {
-        //                BLLTransactionsDetails.MakeSubOrderReceieved(TranID);
-        //            }
-
-        //        }
-
-        //        #endregion
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        WriteLog("PRINT INVOICE:" + ex.Message);
-        //    }
-
-
-        //}
-        //private ReportDocument GetReportClassForLocation(string[] args, DataTable dt1)
-        //{
-        //    string reportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReportDoc");
-        //    string PrinterDefault = "0";
-        //    try
-        //    {
-        //        PrinterDefault = System.Configuration.ConfigurationManager.AppSettings["PrinterDefault"];
-        //    }
-        //    catch { PrinterDefault = "0"; }
-
-        //    ReportDocument rptc = new ReportDocument();
-        //    if (PrinterDefault == "0")
-        //    {
-        //        rptc.Load(Path.Combine(reportPath, "rptInvoice.rpt"));
-        //        // rptc = new rptInvoice();
-        //    }
-        //    else
-        //    {
-        //        rptc.Load(Path.Combine(reportPath, "rptInvoice1.rpt"));
-
-        //        //rptc = new rptInvoice1();
-        //    }
-
-        //    ReportFactory.GetReportDoc(rptc.GetType());
-
-
-        //    rptc.Database.Tables["spSystemList;1"].SetDataSource(dt1);
-
-        //    TextObject txtUserName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtUserName"]);
-        //    txtUserName.Text = args[0];
-        //    TextObject txtTableName = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTableName"]);
-        //    txtTableName.Text = args[1];
-
-
-        //    FieldObject Quantity = ((FieldObject)rptc.ReportDefinition.Sections["Section3"].ReportObjects["Quantity1"]);
-
-        //    Quantity.FieldFormat.NumericFormat.DecimalPlaces = 2;
-        //    Quantity.FieldFormat.NumericFormat.RoundingFormat = CrystalDecisions.Shared.RoundingFormat.RoundToTenth;
-
-
-        //    TextObject Copy = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Copy"]);
-        //    TextObject Fatura = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //    TextObject OrderNo = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtOrderNo"]);
-        //    TextObject txtTranNo = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["txtTranNo"]);
-        //    FieldObject sfTime = ((FieldObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["sfTime"]);
-
-        //    Copy.Width = 0;
-        //    Fatura.Text = args[2];
-        //    OrderNo.Text = args[3];
-        //    txtTranNo.Text = args[4];
-        //    if (!OptionsData.ShowTimeAtPOSInvoice)
-        //    {
-        //        sfTime.Width = 0;
-        //    }
-
-
-
-        //    return rptc;
-        //}
-        //private void AllocateOrder(ReportDocument rptc, DataTable tran, DataTable table, string[] printers, List<ItemLocation> IList, int TranID, bool PrintAll)
-        //{
-
-        //    WriteLog("AllocateOrder");
-
-        //    try
-        //    {
-        //        // Users_GetLoginUserByPIN("u thirr allocateorder ");
-
-        //        TextObject Fatura = ((TextObject)rptc.ReportDefinition.Sections["Section1"].ReportObjects["Fatura"]);
-        //        string FatName = Fatura.Text;
-        //        decimal Value;
-        //        DataTable Tab;
-        //        string LocationName = "";
-
-        //        string PrintAllOrdersInPlaceOfInvoice = "0";
-
-
-        //        //GM
-        //        for (int i = 0; i < printers.Length; i++)
-        //        {
-
-        //            Tab = new DataTable();
-        //            Tab = table.Clone();
-
-        //            DataRow[] rows = null;
-
-        //            if (i == 0)
-        //            {
-
-        //                try
-        //                {
-        //                    PrintAllOrdersInPlaceOfInvoice = System.Configuration.ConfigurationManager.AppSettings["PrintAllOrdersInPlaceOfInvoice"];
-        //                }
-        //                catch { PrintAllOrdersInPlaceOfInvoice = "0"; }
-
-
-        //                // Users_GetLoginUserByPIN("PrintAllOrdersInPlaceOfInvoice:" + PrintAllOrdersInPlaceOfInvoice);
-
-        //                if (PrintAllOrdersInPlaceOfInvoice == "1")
-        //                {
-
-        //                    rows = table.Select("LocationID > 0 OR LocationID2 > 0");
-
-
-        //                }
-        //                else
-        //                {
-
-        //                    rows = table.Select("LocationID = -1");
-
-        //                }
-        //                //////
-        //            }
-        //            else
-        //            {
-        //                rows = table.Select("LocationID = " + i + " OR LocationID2 =" + i);
-
-        //            }
-
-        //            //
-        //            //Users_GetLoginUserByPIN("rows.length" + i + ":" + rows.Length);
-        //            if (rows.Length > 0)
-        //            {
-
-        //                Value = 0;
-        //                foreach (DataRow row1 in rows)
-        //                {
-        //                    Tab.ImportRow(row1);
-        //                    Value += Convert.ToDecimal(row1["VATPrice"].ToString()) * Convert.ToDecimal(row1["Quantity"].ToString());
-        //                }
-        //                Tab.AcceptChanges();
-
-        //                tran.Rows[0]["Value"] = (100 * Value) / (100 + OptionsData.POSVAT);
-        //                tran.Rows[0]["VATValue"] = OptionsData.POSVAT * Value / (100 + OptionsData.POSVAT);
-
-        //                /// per rastin e shtypjes te te gjitha porosive ne nje vend mirret teksti "te gjitha"
-        //                if (i != 0)
-        //                {
-        //                    ItemLocation il = (from ii in IList
-        //                                       where ii.ID.ToString() == i.ToString()
-        //                                       select ii).FirstOrDefault();
-
-        //                    LocationName = il.Name;
-        //                }
-        //                else
-        //                {
-        //                    LocationName = "Te Gjitha";
-        //                }
-        //                //////
-
-        //                Fatura.Text = FatName + "\n( " + LocationName + " )";
-
-        //                rptc.Database.Tables["spTransactionsByID;1"].SetDataSource(tran);
-        //                rptc.Database.Tables["spTransactionsDetailsByID;1"].SetDataSource(Tab);
-
-        //                try
-        //                {
-        //                    if (PrintAll)
-        //                    {
-        //                        if (printers[0] != string.Empty)
-        //                        {
-        //                            // Users_GetLoginUserByPIN("Printeri: " + printers[i]);
-        //                            rptc.PrintOptions.PrinterName = printers[0];
-        //                            rptc.PrintToPrinter(1, true, 0, 0);
-        //                        }
-        //                    }
-        //                    else
-        //                    {
-        //                        if (printers[i] != string.Empty)
-        //                        {
-        //                            WriteLog(printers[i]);
-        //                            //Users_GetLoginUserByPIN("Printeri" + i +": " + printers[i]);
-        //                            rptc.PrintOptions.PrinterName = printers[i];
-        //                            rptc.PrintToPrinter(1, true, 0, 0);
-        //                        }
-        //                    }
-        //                }
-        //                catch (Exception e)
-        //                {
-        //                    WriteLog("1928" + e.Message);
-        //                    //Users u = Users_GetLoginUserByPIN(e.Message);
-        //                }
-        //            }
-
-        //        }
-
-        //        rptc.Dispose();
-        //    }
-        //    catch (Exception ex) { /*Users_GetLoginUserByPIN("error: " + ex.Message);*/ }
-
-
-        //}
-
-        #endregion
 
         private List<Orders> GetOrders(string FromDate, string ToDate)
         {
