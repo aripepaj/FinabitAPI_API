@@ -8,12 +8,12 @@ SET NOCOUNT ON;
 
 /* Safety: Drop triggers first (if any) to avoid dependency errors */
 IF OBJECT_ID('dbo.TR_tblAPI_customization_lists_updated_at','TR') IS NOT NULL DROP TRIGGER dbo.TR_tblAPI_customization_lists_updated_at;
-IF OBJECT_ID('dbo.TR_tblAPI_customization_profile_prefs_updated_at','TR') IS NOT NULL DROP TRIGGER dbo.TR_tblAPI_customization_profile_prefs_updated_at;
+-- Removed trigger drop for tblAPI_customization_profile_prefs (table no longer exists)
 
 /* Drop tables (in FK dependency order if FKs existed; none here) */
 IF OBJECT_ID('dbo.tblAPI_customization_favorites','U') IS NOT NULL DROP TABLE dbo.tblAPI_customization_favorites;
 IF OBJECT_ID('dbo.tblAPI_customization_lists','U') IS NOT NULL DROP TABLE dbo.tblAPI_customization_lists;
-IF OBJECT_ID('dbo.tblAPI_customization_profile_prefs','U') IS NOT NULL DROP TABLE dbo.tblAPI_customization_profile_prefs;
+-- Removed tblAPI_customization_profile_prefs drop (table eliminated from schema)
 
 /* ============= Lists Table ============= */
 CREATE TABLE dbo.tblAPI_customization_lists (
@@ -60,29 +60,7 @@ CREATE UNIQUE INDEX UX_tblAPI_customization_favorites_user_item
 CREATE INDEX IX_tblAPI_customization_favorites_user     ON dbo.tblAPI_customization_favorites([user]);
 CREATE INDEX IX_tblAPI_customization_favorites_added_at ON dbo.tblAPI_customization_favorites(added_at DESC);
 
-/* ============= Profile Preferences Table ============= */
-CREATE TABLE dbo.tblAPI_customization_profile_prefs (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    [user]         NVARCHAR(255) NOT NULL,
-    storage_key    NVARCHAR(255) NULL,
-    mode           NVARCHAR(50)  NULL, -- allow NULL for generic prefs
-    device         NVARCHAR(20)  NULL,
-    last_view_name NVARCHAR(255) NULL,
-    pref_key       NVARCHAR(255) NULL, -- legacy
-    pref_value     NVARCHAR(MAX) NULL, -- legacy
-    updated_at     DATETIME2      NOT NULL DEFAULT GETDATE(),
-    storage_key_norm AS ISNULL(storage_key,'') PERSISTED,
-    device_norm      AS ISNULL(device,'') PERSISTED,
-    CONSTRAINT CK_tblAPI_customization_profile_prefs_mode   CHECK (mode IN ('table','pivot','chart') OR mode IS NULL),
-    CONSTRAINT CK_tblAPI_customization_profile_prefs_device CHECK (device IN ('mobile','desktop') OR device IS NULL)
-);
-
--- Composite uniqueness (user, storage_key, mode, device)
-CREATE UNIQUE INDEX UX_tblAPI_customization_profile_prefs_user_storage_mode_device
-    ON dbo.tblAPI_customization_profile_prefs([user], storage_key_norm, mode, device_norm);
-
-CREATE INDEX IX_tblAPI_customization_profile_prefs_user ON dbo.tblAPI_customization_profile_prefs([user]);
-CREATE INDEX IX_tblAPI_customization_profile_prefs_mode ON dbo.tblAPI_customization_profile_prefs(mode);
+-- Profile preferences table removed from schema (tblAPI_customization_profile_prefs)
 
 /* Triggers to update updated_at */
 EXEC (
@@ -97,17 +75,7 @@ BEGIN
     INNER JOIN inserted i ON l.id = i.id;
 END');
 
-EXEC (
-'CREATE TRIGGER dbo.TR_tblAPI_customization_profile_prefs_updated_at
-   ON dbo.tblAPI_customization_profile_prefs
-   AFTER UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE p SET updated_at = GETDATE()
-    FROM dbo.tblAPI_customization_profile_prefs p
-    INNER JOIN inserted i ON p.id = i.id;
-END');
+-- Removed trigger creation for tblAPI_customization_profile_prefs
 
 PRINT 'Customization tables (final schema) created successfully.';
 GO
