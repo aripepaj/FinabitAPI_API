@@ -1,5 +1,6 @@
 ﻿using FinabitAPI.Core.Global.dto;
 using FinabitAPI.Core.Multitenancy;
+using FinabitAPI.Core.Security;
 using FinabitAPI.Finabit.Item.dto;
 using FinabitAPI.Finabit.Items.dto;
 using FinabitAPI.Finabit.Transaction.dto;
@@ -11,27 +12,58 @@ namespace FinabitAPI.Utilis
     public class DBAccess
     {
         private readonly ITenantAccessor _tenant;
+        private readonly IPasswordProtector _protector;
 
-        public DBAccess(ITenantAccessor tenant) => _tenant = tenant;
+        public DBAccess(ITenantAccessor tenant, IPasswordProtector protector)
+        {
+            _tenant = tenant;
+            _protector = protector;
+        }
 
         private string GetConnectionString()
         {
             var t = _tenant.Current!;
-            if (!string.IsNullOrWhiteSpace(t.ConnectionString)) return t.ConnectionString!;
-
-            var sb = new SqlConnectionStringBuilder
+                
+            var sbFallback = new SqlConnectionStringBuilder
             {
-                DataSource = t.Server,
+                DataSource = EnsureTcpPrefix(t.Server),
                 InitialCatalog = t.Database,
                 UserID = "Fina",
                 Password = "Fina-10",
+                Encrypt = true,
                 TrustServerCertificate = true,
-                PersistSecurityInfo = true,
-                ConnectTimeout = 60,                
+                PersistSecurityInfo = false,
+                ConnectTimeout = 60,
                 Pooling = true,
                 MinPoolSize = 1
             };
-            return sb.ConnectionString;
+            return sbFallback.ConnectionString;
+        }
+
+        private static string EnsureTcpPrefix(string server)
+        {
+            var s = server?.Trim() ?? string.Empty;
+            if (!s.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase) &&
+                !s.StartsWith("np:", StringComparison.OrdinalIgnoreCase))
+            {
+                s = "tcp:" + s;
+            }
+            return s;
+        }
+
+        private string DecryptUserPwdIfEncrypted(string cs)
+        {
+            var b = new SqlConnectionStringBuilder(cs);
+            b.UserID = TryUnprotect(b.UserID);
+            b.Password = TryUnprotect(b.Password);
+            return b.ConnectionString;
+        }
+
+        private string TryUnprotect(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return value ?? string.Empty;
+            try { return _protector.Unprotect(value); } // works if it’s ciphertext
+            catch { return value!; }                    // if it’s plaintext, keep it as-is
         }
 
         public SqlConnection GetConnection() => new SqlConnection(GetConnectionString());

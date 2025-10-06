@@ -1,11 +1,11 @@
 ﻿using FinabitAPI;
 using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Multitenancy;
+using FinabitAPI.Core.Security;
 using FinabitAPI.Employee;
 using FinabitAPI.Finabit.Account;
 using FinabitAPI.Finabit.Customization;
 using FinabitAPI.Finabit.Items;
-using FinabitAPI.Finabit.Partner;
 using FinabitAPI.Finabit.Transaction;
 using FinabitAPI.Repository;
 using FinabitAPI.User;
@@ -61,6 +61,11 @@ builder.Services.AddScoped<OptionsRepository>();
 builder.Services.AddScoped<TransactionsRepository>();
 builder.Services.AddScoped<ICustomizationRepository, CustomizationRepository>();
 builder.Services.AddControllers();
+
+const string MasterKeyBase64 = "hZq8fQVt9wqzYQx0c6Pq9r2C7a0rG2q0bqZpH0m1y4g=";
+
+builder.Services.AddSingleton<IPasswordProtector>(
+    _ => new HardcodedKeyPasswordProtector(MasterKeyBase64));
 
 builder.Services
     .AddAuthentication(options =>
@@ -164,7 +169,6 @@ app.MapGet("/config-debug", (IConfiguration cfg) =>
         return Results.Text(root.GetDebugView());
     return Results.Text("DebugView not available (cfg is not IConfigurationRoot).");
 }).AllowAnonymous();
-
 
 
 app.Run();
