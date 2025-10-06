@@ -32,6 +32,34 @@ public class TenantsController : ControllerBase
             PersistSecurityInfo = false,
             ConnectTimeout = 15
         };
+
+        sb["ConnectRetryCount"] = 3;
+        sb["ConnectRetryInterval"] = 2;
+        sb["Pooling"] = true;
+        sb["Min Pool Size"] = 1;
+
+        return sb.ConnectionString;
+    }
+
+    private static string CreateConnString(string server, string database)
+    {
+        // ensure tcp:
+        if (!server.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase) &&
+            !server.StartsWith("np:", StringComparison.OrdinalIgnoreCase))
+            server = "tcp:" + server;
+
+        var sb = new SqlConnectionStringBuilder
+        {
+            DataSource = server,         
+            InitialCatalog = database,
+            UserID = "ASuzNUixKRD2z28FoCwnQyIqfteoCY2qXpi2g4CqU1lt",
+            Password = "AeIEIi6Zy1iI5yKAyCN0nPV9wX/9diL4CuUvSkywAtsNSYvw",
+            Encrypt = true,
+            TrustServerCertificate = true,
+            PersistSecurityInfo = false,
+            ConnectTimeout = 15
+        };
+
         sb["ConnectRetryCount"] = 3;
         sb["ConnectRetryInterval"] = 2;
         sb["Pooling"] = true;
@@ -85,7 +113,7 @@ public class TenantsController : ControllerBase
             Name = dto.Name,
             Server = dto.Server,
             Database = dto.Database,
-            ConnectionString = cs              
+            ConnectionString = CreateConnString(dto.Server, dto.Database)
         };
 
         var ok = await _store.AddOrUpdateAsync(t, dto.SetAsDefault, ct);
@@ -111,7 +139,7 @@ public class TenantsController : ControllerBase
             Name = dto.Name,
             Server = dto.Server,
             Database = dto.Database,
-            ConnectionString = cs
+            ConnectionString = CreateConnString(dto.Server, dto.Database)
         };
 
         var ok = await _store.AddOrUpdateAsync(t, dto.SetAsDefault, ct);
