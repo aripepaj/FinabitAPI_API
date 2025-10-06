@@ -1,3 +1,4 @@
+using FinabitAPI.Core.Global.dto;
 using System;
 using System.ComponentModel.DataAnnotations;
 
