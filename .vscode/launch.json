@@ -2,20 +2,40 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Launch (FinabitAPI)",
+      "name": ".NET Launch (Debug Mode)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "dotnet",
-      "args": [ "run", "--project", "FinabitAPI/FinabitAPI.csproj" ],
-      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/FinabitAPI/bin/Debug/net8.0/win-x64/Finabit.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/FinabitAPI",
+      "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",
         "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
       },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5200;https://localhost:7200"
+        "ASPNETCORE_URLS": "http://localhost:5202;https://localhost:7202"
+      }
+    },
+    {
+      "name": ".NET Run (No Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "dotnet",
+      "args": ["run", "--project", "FinabitAPI/FinabitAPI.csproj"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5202;https://localhost:7202"
       }
     }
   ]
