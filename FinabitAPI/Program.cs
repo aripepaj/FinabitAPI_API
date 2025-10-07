@@ -6,6 +6,7 @@ using FinabitAPI.Employee;
 using FinabitAPI.Finabit.Account;
 using FinabitAPI.Finabit.Customization;
 using FinabitAPI.Finabit.Items;
+using FinabitAPI.Finabit.SystemData;
 using FinabitAPI.Finabit.Transaction;
 using FinabitAPI.Repository;
 using FinabitAPI.User;
@@ -60,6 +61,11 @@ builder.Services.AddScoped<ItemsMasterImportRepository>();
 builder.Services.AddScoped<OptionsRepository>();
 builder.Services.AddScoped<TransactionsRepository>();
 builder.Services.AddScoped<ICustomizationRepository, CustomizationRepository>();
+
+// SystemData services
+builder.Services.AddScoped<FinabitAPI.Finabit.SystemData.SystemDataRepository>();
+builder.Services.AddScoped<FinabitAPI.Finabit.SystemData.SystemDataService>();
+
 builder.Services.AddControllers();
 
 const string MasterKeyBase64 = "hZq8fQVt9wqzYQx0c6Pq9r2C7a0rG2q0bqZpH0m1y4g=";
