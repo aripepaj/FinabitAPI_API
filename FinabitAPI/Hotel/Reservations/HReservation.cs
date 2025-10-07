@@ -1,7 +1,8 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using FinabitAPI.Core.Global.dto;
 
-namespace Finabit_API.Models
+namespace FinabitAPI.Hotel.Reservations
 {
     public class HReservation : BaseClass
     {

@@ -6,8 +6,9 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using FinabitAPI.Utilis;
+using FinabitAPI.Core.Utilis;
 
-namespace Finabit_API.Models
+namespace FinabitAPI.Hotel.Reservations
 {
     public class ReservationsRepository
     {

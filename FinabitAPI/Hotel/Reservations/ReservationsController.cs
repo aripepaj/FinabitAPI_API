@@ -1,10 +1,10 @@
-using Finabit_API.Models;
+
 using FinabitAPI.Service;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
 
-namespace FinabitAPI.Controllers
+namespace FinabitAPI.Hotel.Reservations.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
