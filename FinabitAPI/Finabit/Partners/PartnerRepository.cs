@@ -12,7 +12,7 @@ namespace FinabitAPI
 {
     public class PartnerRepository
     {
-        private readonly DBAccess _dbAccess; 
+        private readonly DBAccess _dbAccess;
         public PartnerRepository(DBAccess dbAccess) { _dbAccess = dbAccess; }
 
         public void Insert(Partner cls)
@@ -680,7 +680,7 @@ namespace FinabitAPI
                 cnn.Open();
 
                 object ob = cmd.ExecuteScalar();
-                partnerID = ob == null ? 0 :Convert.ToInt32(ob.ToString());
+                partnerID = ob == null ? 0 : Convert.ToInt32(ob.ToString());
                 cnn.Close();
             }
             catch (Exception ex)
@@ -793,7 +793,7 @@ namespace FinabitAPI
         //public List<PartnerLookup> GetPartnerByTypeID(string TypeID)
         //{
         //    List<PartnerLookup> clsList = new List<PartnerLookup>();
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("spPartnerByType", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
@@ -1015,7 +1015,7 @@ namespace FinabitAPI
         //public List<PartnerLookup> GetCustomerWithItemID()
         //{
         //    List<PartnerLookup> clsList = new List<PartnerLookup>();
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("spPartnerWithItemIDList", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
@@ -1073,11 +1073,11 @@ namespace FinabitAPI
         //{
         //    List<XMLPartners> clsList = new List<XMLPartners>();
 
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("sp_m_GetPartners", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
-        //    SqlParameter param = DALGlobal.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
+        //    SqlParameter param = _dbAccess.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
         //    cmd.Parameters.Add(param);
 
         //    try
@@ -1136,11 +1136,11 @@ namespace FinabitAPI
         //{
         //    List<XMLPartners> clsList = new List<XMLPartners>();
 
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("sp_m_GetPartnersByDepartment", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
-        //    SqlParameter param = DALGlobal.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
+        //    SqlParameter param = _dbAccess.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
         //    cmd.Parameters.Add(param);
 
         //    try
@@ -1208,11 +1208,11 @@ namespace FinabitAPI
         //{
         //    List<XMLPartners_2> clsList = new List<XMLPartners_2>();
 
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("sp_m_GetPartners", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
-        //    SqlParameter param = DALGlobal.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
+        //    SqlParameter param = _dbAccess.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
         //    cmd.Parameters.Add(param);
 
         //    try
@@ -1368,11 +1368,11 @@ namespace FinabitAPI
         //{
         //    List<XMLPartners> clsList = new List<XMLPartners>();
 
-        //    SqlConnection cnn = DALGlobal.GetConnection();
+        //    SqlConnection cnn = _dbAccess.GetConnection();
         //    SqlCommand cmd = new SqlCommand("sp_m_GetPartners_NAV", cnn);
         //    cmd.CommandType = CommandType.StoredProcedure;
 
-        //    SqlParameter param = DALGlobal.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
+        //    SqlParameter param = _dbAccess.GetSqlParameterInput("@prmDepartmentID", DepartmetnID, SqlDbType.Int);
         //    cmd.Parameters.Add(param);
 
         //    try
@@ -1517,9 +1517,9 @@ namespace FinabitAPI
             return partners;
         }
 
-        public (int inserted,int failed,string error) ImportPartners(List<PartnerBatchItem> partners)
+        public (int inserted, int failed, string error) ImportPartners(List<PartnerBatchItem> partners)
         {
-            if (partners == null || partners.Count == 0) return (0,0,null);
+            if (partners == null || partners.Count == 0) return (0, 0, null);
             var dt = new DataTable();
             dt.Columns.Add("PartnerName", typeof(string));  // 1
             dt.Columns.Add("Type", typeof(string));  // 2
@@ -1570,7 +1570,7 @@ namespace FinabitAPI
                 using var cmd = new SqlCommand("spImportPartners", cnn) { CommandType = CommandType.StoredProcedure };
                 var tvp = new SqlParameter("@ImportPartners", SqlDbType.Structured)
                 {
-                    TypeName = "dbo.ImportPartners",  
+                    TypeName = "dbo.ImportPartners",
                     Value = dt
                 };
                 cmd.Parameters.Add(tvp);
@@ -1652,5 +1652,351 @@ namespace FinabitAPI
                 if (cnn.State != ConnectionState.Closed) cnn.Close();
             }
         }
+
+
+
+
+
+
+
+        //LB
+         public DataTable CheckFiscalNo(int PartnerID, string FiscalNo)
+        {
+            DataTable dtList = new DataTable();
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spCheckFiscalNo", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            SqlDataAdapter dadap = new SqlDataAdapter(cmd);
+
+            SqlParameter param;
+
+            param = new SqlParameter("@PartnerID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = PartnerID;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@FiscalNo", System.Data.SqlDbType.VarChar);
+            param.Direction = ParameterDirection.Input;
+            param.Value = FiscalNo;
+            cmd.Parameters.Add(param);
+            try
+            {
+                cnn.Open();
+                dadap.Fill(dtList);
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return dtList;
+        }
+     
+
+        public DataTable SelectAllCustomers()
+        {
+            DataTable dtList = new DataTable();
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spHCustomerList", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            SqlDataAdapter dadap = new SqlDataAdapter(cmd);
+            try
+            {
+                cnn.Open();
+                dadap.Fill(dtList);
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return dtList;
+        }
+
+        #region GetPartnerByTypeID
+
+        public List<PartnerLookup> GetPartnerByTypeID(string TypeID)
+        {
+            List<PartnerLookup> clsList = new List<PartnerLookup>();
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spPartnerByType", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            SqlParameter param;
+
+            param = new SqlParameter("@Type", System.Data.SqlDbType.VarChar);
+            param.Direction = ParameterDirection.Input;
+            param.Value = TypeID;
+            cmd.Parameters.Add(param);
+
+            try
+            {
+                cnn.Open();
+
+                SqlDataReader dr = cmd.ExecuteReader();
+                if (dr.HasRows)
+                {
+                    while (dr.Read())
+                    {
+                        PartnerLookup cls = new PartnerLookup();
+                        cls.ID = Convert.ToInt32(dr["PartnerID"]);
+                        cls.PartnerName = Convert.ToString(dr["PartnerName"]);
+                        cls.PartnerTypeID = Convert.ToInt32(dr["PartnerTypeID"]);
+                        cls.Account = Convert.ToString(dr["Account"]);
+                        cls.PIN = dr["PIN"] == DBNull.Value ? "" : Convert.ToString(dr["PIN"]);
+                        cls.DiscountPercent = dr["DiscountPercent"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["DiscountPercent"]);
+                        clsList.Add(cls);
+
+                    }
+                }
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return clsList;
+        } 
+
+        #endregion
+
+    
+     
+    
+
+   
+        #region GetCustomerWithItemID
+
+        public List<PartnerLookup> GetCustomerWithItemID()
+        {
+            List<PartnerLookup> clsList = new List<PartnerLookup>();
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spPartnerWithItemIDList", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            try
+            {
+                cnn.Open();
+
+                SqlDataReader dr = cmd.ExecuteReader();
+                if (dr.HasRows)
+                {
+                    while (dr.Read())
+                    {
+                        PartnerLookup cls = new PartnerLookup();
+                        cls.ID = Convert.ToInt32(dr["PartnerID"]);
+                        cls.PartnerName = Convert.ToString(dr["PartnerName"]);
+                        cls.PartnerTypeID = Convert.ToInt32(dr["PartnerTypeID"]);
+                        cls.Account = Convert.ToString(dr["Account"]);
+                        cls.PIN = dr["PIN"] == DBNull.Value ? "" : Convert.ToString(dr["PIN"]);
+                        cls.ItemID = Convert.ToString(dr["ItemID"]);
+                        clsList.Add(cls);
+
+                    }
+                }
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return clsList;
+        }
+
+        #endregion
+
+      
+        // public List<PartnerCategories> SelectAllPartnerCategories()
+        // {
+        //     List<PartnerCategories> clsList = new List<PartnerCategories>();
+        //     SqlConnection cnn = _dbAccess.GetConnection();
+        //     SqlCommand cmd = new SqlCommand("spPartnerCategoriesList", cnn);
+        //     cmd.CommandType = CommandType.StoredProcedure;
+        //     try
+        //     {
+        //         cnn.Open();
+
+        //         SqlDataReader dr = cmd.ExecuteReader();
+        //         if (dr.HasRows)
+        //         {
+        //             while (dr.Read())
+        //             {
+        //                 PartnerCategories cls = new PartnerCategories();
+        //                 cls.ID = Convert.ToInt32(dr["ID"]);
+        //                 cls.PartnerCategory = Convert.ToString(dr["PartnerCategory"]);
+                        
+
+        //                 clsList.Add(cls);
+
+        //             }
+        //         }
+        //         cnn.Close();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         string exp = ex.Message;
+        //         cnn.Close();
+        //     }
+        //     return clsList;
+        // }
+
+        #region GetPartnerItemID
+
+        public string GetPartnerItemID()
+        {
+            string ItemID = "";
+            SqlConnection cnn = new SqlConnection();
+            cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spGetPartnerItemID", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = 0;
+
+            try
+            {
+                cnn.Open();
+                object ob = cmd.ExecuteScalar();
+                ItemID = ob == null ? "" : ob.ToString();
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                ItemID = "";
+                cnn.Close();
+            }
+
+            return ItemID;
+        }
+
+        #endregion
+
+        public DataTable GetCustomersBySearch(int TypeID, int departmentid, string PartnerName)
+        {
+            DataTable dtList = new DataTable();
+            dtList.TableName = "PartnerList";
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spCustomerByType_10", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            SqlParameter param;
+
+            param = new SqlParameter("@Type", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = TypeID;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@DepartmentID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = departmentid;
+            cmd.Parameters.Add(param);
+
+
+            param = new SqlParameter("@PartnerName", System.Data.SqlDbType.VarChar);
+            param.Direction = ParameterDirection.Input;
+            param.Value = PartnerName;
+            cmd.Parameters.Add(param);
+
+
+
+            SqlDataAdapter dadap = new SqlDataAdapter(cmd);
+            try
+            {
+                cnn.Open();
+                dadap.Fill(dtList);
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return dtList;
+        }
+
+
+        public List<PartnerLookup> GetPartnersBySearch_ID(string TypeID, int departmentid, string PartnerID)
+        {
+            List<PartnerLookup> clsList = new List<PartnerLookup>();
+            SqlConnection cnn = _dbAccess.GetConnection();
+            SqlCommand cmd = new SqlCommand("spPartnerByType", cnn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            SqlParameter param;
+
+            param = new SqlParameter("@Type", System.Data.SqlDbType.VarChar);
+            param.Direction = ParameterDirection.Input;
+            param.Value = TypeID;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@DEpartmentID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = departmentid;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@PartnerID", System.Data.SqlDbType.VarChar);
+            param.Direction = ParameterDirection.Input;
+            param.Value = PartnerID;
+            cmd.Parameters.Add(param);
+
+            try
+            {
+                cnn.Open();
+
+                SqlDataReader dr = cmd.ExecuteReader();
+                if (dr.HasRows)
+                {
+                    while (dr.Read())
+                    {
+                        PartnerLookup cls = new PartnerLookup();
+                        try
+                        {
+
+
+                            cls.ID = Convert.ToInt32(dr["PartnerID"]);
+                            cls.PartnerName = Convert.ToString(dr["PartnerName"]);
+                            cls.PartnerTypeID = Convert.ToInt32(dr["PartnerTypeID"]);
+                            cls.Account = Convert.ToString(dr["Account"]);
+                            cls.PIN = dr["PIN"] == DBNull.Value ? "" : Convert.ToString(dr["PIN"]);
+                            //cls.PartnerTypeName = Convert.ToString(dr["PartnerTypeName"]);
+                            //cls.PlaceName = Convert.ToString(dr["PlaceName"]);
+                            //cls.PartnerGroupName = Convert.ToString(dr["PartnerGroupName"]);
+                            //cls.NIF = dr["BusinessNo"] == DBNull.Value ? "" : Convert.ToString(dr["BusinessNo"]);
+                            //cls.Address = Convert.ToString(dr["Address"]);
+                            //try { cls.HasVAT = Convert.ToBoolean(dr["HasVAT"]); }
+                            //catch { }
+                            //cls.Export = dr["Export"] == DBNull.Value ? false : Convert.ToBoolean(dr["Export"]);
+                            //cls.HasVAT = dr["HasVAT"] == DBNull.Value ? true : Convert.ToBoolean(dr["HasVAT"]);
+
+                        }
+                        catch
+                        {
+                        }
+                        clsList.Add(cls);
+
+                    }
+                }
+                cnn.Close();
+            }
+            catch (Exception ex)
+            {
+                string exp = ex.Message;
+                cnn.Close();
+            }
+            return clsList;
+        }
+
+
+
+
     }
+    
+
+
+
+
+
+    
 }
