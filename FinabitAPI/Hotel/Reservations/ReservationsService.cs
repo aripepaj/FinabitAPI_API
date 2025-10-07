@@ -6,10 +6,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using Finabit_API.Models;
 using FinabitAPI.Utilis;
 
-namespace FinabitAPI.Service
+namespace FinabitAPI.Hotel.Reservations
 {
     public class ReservationsService
     {
