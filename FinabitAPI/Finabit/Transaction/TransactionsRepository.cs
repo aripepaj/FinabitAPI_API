@@ -1673,46 +1673,30 @@ namespace FinabitAPI.Finabit.Transaction
 
 
         #region GetTransactionNo
-
-        public string GetTransactionNo(int TransactionType, DateTime Date, int DepartmentID)
+        public string GetTransactionNo(int transactionType, DateTime date, int departmentId)
         {
-            string TransactionNo = "";
-            SqlConnection cnn = new SqlConnection();
-            cnn = GlobalRepository.GetConnection();
-            SqlCommand cmd = new SqlCommand("spGetTransactionNo", cnn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.CommandTimeout = 0;
+            using var connection = _dbAccess.GetConnection(); 
+            using var cmd = new SqlCommand("spGetTransactionNo", connection)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0
+            };
 
-            SqlParameter param;
-            param = new SqlParameter("@TypeID", SqlDbType.Int);
-            param.Direction = ParameterDirection.Input;
-            param.Value = TransactionType;
-            cmd.Parameters.Add(param);
-
-            param = new SqlParameter("@Date", SqlDbType.SmallDateTime);
-            param.Direction = ParameterDirection.Input;
-            param.Value = Date;
-            cmd.Parameters.Add(param);
-
-            param = new SqlParameter("@DepartmentID", SqlDbType.Int);
-            param.Direction = ParameterDirection.Input;
-            param.Value = DepartmentID;
-            cmd.Parameters.Add(param);
+            cmd.Parameters.Add("@TypeID", SqlDbType.Int).Value = transactionType;
+            cmd.Parameters.Add("@Date", SqlDbType.SmallDateTime).Value = date.Date; // keep only the date part
+            cmd.Parameters.Add("@DepartmentID", SqlDbType.Int).Value = departmentId;
 
             try
             {
-                cnn.Open();
-                object ob = cmd.ExecuteScalar();
-                TransactionNo = ob == null ? "" : ob.ToString();
-                cnn.Close();
+                connection.Open();
+                var ob = cmd.ExecuteScalar();
+                return (ob == null || ob == DBNull.Value) ? string.Empty : Convert.ToString(ob)!;
             }
-            catch (Exception ex)
+            catch
             {
-                TransactionNo = "";
-                cnn.Close();
+                // TODO: optional logging
+                return string.Empty;
             }
-
-            return TransactionNo;
         }
 
         #endregion
