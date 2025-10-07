@@ -29,6 +29,7 @@ namespace FinabitAPI.Controllers
         private readonly DBAccess _dbAccess;
         private readonly EmployeesRepository _dalEmployee;
         private readonly DepartmentRepository _dalDepartment;
+        private TransactionsService transactionsService => new TransactionsService(_dbAccess);
 
         public TransactionsController(IConfiguration configuration, DBAccess dbAccess, EmployeesRepository dalEmployee, DepartmentRepository dalDepartment)
         {
@@ -93,7 +94,7 @@ namespace FinabitAPI.Controllers
                 //Users_GetLoginUserByPIN(t.ErrorDescription);
             }
 
-            TransactionsService bllt = new TransactionsService(true, _dbAccess);
+            TransactionsService bllt = new TransactionsService(_dbAccess);
             try
             {
                 //Users_GetLoginUserByPIN(t.Memo);
@@ -383,7 +384,7 @@ namespace FinabitAPI.Controllers
             bool GenerateTranNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
             if (GenerateTranNo || String.IsNullOrEmpty(transaction.t.TransactionNo))
             {
-                transaction.t.TransactionNo = TransactionsService.GetTransactionNo(transaction.t.TransactionTypeID, t.TransactionDate, t.DepartmentID);
+                transaction.t.TransactionNo = transactionsService.GetTransactionNo(transaction.t.TransactionTypeID, t.TransactionDate, t.DepartmentID);
             }
 
             transaction.t.InvoiceNo = transaction.t.TransactionNo;
@@ -464,7 +465,7 @@ namespace FinabitAPI.Controllers
             t.VATValue = Totals[1];
             t.AllValue = t.VATValue + (t.Value);
 
-            TransactionsService bllt = new TransactionsService(true, _dbAccess);
+            TransactionsService bllt = new TransactionsService(_dbAccess);
             try
             {
                 t.ErrorID = bllt.Insert(t, false);
@@ -794,7 +795,7 @@ namespace FinabitAPI.Controllers
 
             TranCash.TranDetailsColl = GetDetailsForPayment(ThisTran, TranCash.ID, PaymentValue);
             TranCash.InsBy = 1;
-            TransactionsService bllt = new TransactionsService(true, _dbAccess);
+            TransactionsService bllt = new TransactionsService(_dbAccess);
             bllt.Update(TranCash);
             if (bllt.ErrorID==0)
             {
@@ -931,7 +932,7 @@ namespace FinabitAPI.Controllers
         {
             int CashJournalPOSID = 0;
             Transactions t = GetCashTransaction(empid,departmentid);
-            TransactionsService bllt = new TransactionsService(true, _dbAccess);
+            TransactionsService bllt = new TransactionsService(_dbAccess);
             bllt.Insert(t,false);
             if (bllt.ErrorID ==0)
             {
@@ -1025,447 +1026,7 @@ namespace FinabitAPI.Controllers
             var rows = ToTableRows(dt);
             return Ok(rows);
         }
-
-        /*        #region Helpers for DepartmentsList endpoints
-
-                [HttpPost("Cash/Import")]    
-                public ActionResult<JournalImportResponse> ImportArka([FromBody] JournalImportRequest req)
-                {
-                    if (req == null) return BadRequest();
-                    req.JournalTypeID = 25;
-                    return Ok(ImportJournalCore(req));
-                }
-
-                [HttpPost("Bank/Import")]     
-                public ActionResult<JournalImportResponse> ImportBank([FromBody] JournalImportRequest req)
-                {
-                    if (req == null) return BadRequest();
-                    req.JournalTypeID = 24;
-                    return Ok(ImportJournalCore(req));
-                }
-
-                private JournalImportResponse ImportJournalCore(JournalImportRequest req)
-                {
-                    var resp = new JournalImportResponse();
-
-                    if (req.DepartmentID <= 0)
-                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "DepartmentID required" } } };
-                    if (req.JournalTypeID != 24 && req.JournalTypeID != 25)
-                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "JournalTypeID must be 24 (Bank) or 25 (Arka)" } } };
-                    if (req.Lines == null || req.Lines.Count == 0)
-                        return new JournalImportResponse { Ok = false, Results = new() { new JournalImportGroupResult { Status = "error", Error = "Lines required" } } };
-
-                    // group by (date, cashAccount)
-                    var groups = req.Lines.GroupBy(l => new { D = l.Date.Date, A = (l.CashAccount ?? "").Trim() });
-
-                    foreach (var g in groups)
-                    {
-                        var gr = new JournalImportGroupResult
-                        {
-                            Date = g.Key.D.ToString("yyyy-MM-dd"),
-                            CashAccount = g.Key.A
-                        };
-
-                        if (string.IsNullOrWhiteSpace(gr.CashAccount))
-                        {
-                            gr.Status = "error";
-                            gr.Error = "CashAccount missing on one or more lines.";
-                            resp.Results.Add(gr);
-                            continue;
-                        }
-
-                        try
-                        {
-                            // 1) find or create header for (date, account, department)
-                            int headerId = _dbAccess.FindJournalHeaderID(req.DepartmentID, req.JournalTypeID, g.Key.D, gr.CashAccount);
-                            Transactions header;
-
-                            if (headerId > 0)
-                            {
-                                header = TransactionsService.SelectByID(new Transactions { ID = headerId });
-                                if (header == null || header.ID == 0)
-                                {
-                                    gr.Status = "error";
-                                    gr.Error = $"Header {headerId} not found.";
-                                    resp.Results.Add(gr);
-                                    continue;
-                                }
-                            }
-                            else
-                            {
-                                header = BuildJournalHeader(
-                                    journalTypeId: req.JournalTypeID,
-                                    empId: 0,
-                                    departmentId: req.DepartmentID,
-                                    date: g.Key.D,
-                                    cashAccountOverride: gr.CashAccount
-                                );
-
-                                var svcIns = new TransactionsService(true, _dbAccess);
-                                try
-                                {
-                                    header.ErrorID = svcIns.Insert(header, false);
-                                    if (svcIns.ErrorID != 0 || header.ID <= 0)
-                                    {
-                                        gr.Status = "error";
-                                        gr.Error = $"Failed to create header. ErrorID={svcIns.ErrorID}";
-                                        resp.Results.Add(gr);
-                                        continue;
-                                    }
-                                }
-                                finally
-                                {
-                                    svcIns.CloseGlobalConnection();
-                                }
-                            }
-
-                            var details = new List<TransactionsDetails>();
-                            foreach (var l in g)
-                            {
-                                if (l.DetailsType != 3 && l.DetailsType != 4 && l.DetailsType != 5 && l.DetailsType != 6)
-                                    continue;
-
-                                var sign = (l.DetailsType == 3 || l.DetailsType == 6) ? -1m : 1m;
-                                var val = Math.Abs(l.Amount) * sign;
-                                var desc = string.IsNullOrWhiteSpace(l.Description)
-                                    ? (l.DetailsType switch
-                                    {
-                                        3 => "Pagese nga furnitori",
-                                        4 => "Arketim nga konsumatori",
-                                        5 => "Mandat Arketimi (Depozitë)",
-                                        6 => "Mandat Pagese (Terheqje)",
-                                        _ => "Lëvizje"
-                                    })
-                                    : l.Description.Trim();
-
-                                var d = new TransactionsDetails
-                                {
-                                    ID = 0,
-                                    TransactionID = header.ID,
-                                    DetailsType = l.DetailsType,
-                                    ItemID = desc,
-                                    ItemName = desc,
-                                    Quantity = 1,
-                                    Price = val,
-                                    Value = val,
-                                    Mode = 1
-                                };
-                                if (l.PaymentID.HasValue && l.PaymentID.Value > 0)
-                                    d.PaymentID = l.PaymentID.Value;
-
-                                details.Add(d);
-                            }
-
-                            if (details.Count == 0)
-                            {
-                                gr.Status = "error";
-                                gr.Error = "No valid lines to insert for this group.";
-                                resp.Results.Add(gr);
-                                continue;
-                            }
-
-                            header.TranDetailsColl = details;
-                            var svcUpd = new TransactionsService(true, _dbAccess);
-                            try
-                            {
-                                header.ErrorID = svcUpd.Update(header);
-                                if (header.ErrorID != 0)
-                                {
-                                    gr.Status = "error";
-                                    gr.Error = $"Update failed. ErrorID={header.ErrorID}";
-                                    resp.Results.Add(gr);
-                                    continue;
-                                }
-                            }
-                            finally
-                            {
-                                svcUpd.CloseGlobalConnection();
-                            }
-
-                            gr.HeaderID = header.ID;
-                            gr.InsertedLines = details.Count;
-                            resp.Results.Add(gr);
-                        }
-                        catch (Exception ex)
-                        {
-                            gr.Status = "error";
-                            gr.Error = ex.Message;
-                            resp.Results.Add(gr);
-                        }
-                    }
-
-                    resp.Ok = resp.Results.All(r => r.Status == "ok");
-                    return resp;
-                }
-
-                private Transactions BuildJournalHeader(int journalTypeId, int empId, int departmentId, DateTime date, string cashAccountOverride = null)
-                {
-                    var dep = new Department { ID = departmentId };
-                    dep = _dalDepartment.SelectByID(dep.ID);
-
-                    Employees e = null;
-                    if (empId > 0)
-                    {
-                        e = new Employees { EmpID = empId };
-                        e = _dalEmployee.SelectByID(e);
-                    }
-
-                    var cls = new Transactions
-                    {
-                        ID = 0,
-                        CompanyID = dep.CompanyID,
-                        TransactionTypeID = journalTypeId,          // 24 = Bank, 25 = Arka
-                        InvoiceDate = date,
-                        TransactionDate = date,
-                        DueDate = date,
-                        DepartmentID = departmentId,
-                        Value = 0,
-                        AllValue = 0,
-                        PaidValue = 0,
-                        Active = true,
-                        Reference = "",
-                        Links = "",
-                        Memo = (journalTypeId == 24 ? "Ditar Banke" : "Ditar Arke"),
-                        VATPercentID = 0,
-                        InsBy = 1
-                    };
-
-                    // Numbering
-                    var SDTable = GlobalRepository.ListSystemDataTable(_dbAccess);
-                    bool genNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
-                    if (genNo)
-                    {
-                        cls.TransactionNo = $"{DateTime.Now:ddMMyyy_HH}_{dep.DepartmentName}";
-                        cls.InvoiceNo = cls.TransactionNo;
-                    }
-                    else
-                    {
-                        cls.TransactionNo = TransactionsService.GetTransactionNo(journalTypeId, date, departmentId);
-                        cls.InvoiceNo = cls.TransactionNo;
-                    }
-
-                    // CashAccount
-                    if (!string.IsNullOrWhiteSpace(cashAccountOverride))
-                        cls.CashAccount = cashAccountOverride.Trim();
-                    else
-                    {
-                        var cashAcc = (e != null ? e.CashAccount : "") ?? "";
-                        if (string.IsNullOrWhiteSpace(cashAcc))
-                            cashAcc = OptionsData.EmployeeCashAccount;
-                        cls.CashAccount = cashAcc ?? "";
-                    }
-
-                    return cls;
-                }
-
-                #endregion*/
-
-        [HttpPost("Cash/AddLikePOS")]
-        public IActionResult Cash_AddLikePOS([FromBody] CashAddLikePOSRequest req)
-        {
-            if (req == null) return BadRequest("Body required.");
-            if (req.DepartmentID <= 0) return BadRequest("DepartmentID required.");
-            if (req.Amount == 0) return BadRequest("Amount cannot be zero.");
-            if (req.JournalTypeID is not (24 or 25))
-                return BadRequest("JournalTypeID must be 24 (Bank) or 25 (Arka).");
-
-            var today = DateTime.Today;
-            var date = (req.Date?.Date) ?? today;
-            if (date != today)
-                return BadRequest("Only today's date is supported by this endpoint.");
-
-            // ===== BANK (24) — unchanged from your current logic =====
-            if (req.JournalTypeID == 24)
-            {
-                if (string.IsNullOrWhiteSpace(req.CashAccount))
-                    return BadRequest("CashAccount is required when JournalTypeID=24 (Bank).");
-
-                var headerIdBank = GetBankJournalID(req.CashAccount.Trim(), req.DepartmentID);
-                if (headerIdBank <= 0) return StatusCode(500, "Failed to open/find BANK header for the given account.");
-
-                var tranBank = TransactionsService.SelectByID(new Transactions { ID = headerIdBank });
-                if (tranBank == null || tranBank.ID == 0) return NotFound("Bank journal header not found.");
-
-                var detBank = BuildCashDetailLikePOS(req.DetailsType, Math.Abs(req.Amount), req.Description, req.PaymentID);
-                detBank.TransactionID = tranBank.ID;
-                tranBank.TranDetailsColl = new List<TransactionsDetails> { detBank };
-
-                var svcBank = new TransactionsService(true, _dbAccess);
-                try
-                {
-                    var err = svcBank.Update(tranBank);
-                    if (err != 0) return StatusCode(500, $"Update failed. ErrorID={err}");
-                }
-                finally { svcBank.CloseGlobalConnection(); }
-
-                return Ok(new
-                {
-                    ok = true,
-                    cashJournalId = tranBank.ID,
-                    transactionTypeId = tranBank.TransactionTypeID,
-                    terminId = (string?)null,
-                    dateUsed = today.ToString("yyyy-MM-dd"),
-                    departmentId = tranBank.DepartmentID,
-                    cashAccount = tranBank.CashAccount,
-                    transactionNo = tranBank.TransactionNo,
-                    invoiceNo = tranBank.InvoiceNo,
-                    insertedLines = 1,
-                    line = new
-                    {
-                        detailsType = req.DetailsType,
-                        signedAmount = detBank.Value,
-                        description = detBank.ItemName,
-                        linkedPaymentID = req.PaymentID
-                    }
-                });
-            }
-
-            Employees emp;
-
-            int empIdFromRef;
-            if (!string.IsNullOrWhiteSpace(req.Reference) &&
-                int.TryParse(req.Reference.Trim(), out empIdFromRef) &&
-                empIdFromRef > 0 &&
-                req.Reference.Trim() != "1" && req.Reference.Trim() != "2")
-            {
-                emp = _dalEmployee.SelectByID(new Employees { EmpID = empIdFromRef });
-            }
-            else
-            {
-                int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var tmpEmp1) ? tmpEmp1 : 0;
-                int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var tmpEmp2) ? tmpEmp2 : 0;
-
-                int pick;
-                if (!string.IsNullOrEmpty(req.Reference) && req.Reference.Trim() == "1" && emp1 > 0) pick = emp1;
-                else if (!string.IsNullOrEmpty(req.Reference) && req.Reference.Trim() == "2" && emp2 > 0) pick = emp2;
-                else pick = emp1 > 0 ? emp1 : emp2;
-
-                emp = _dalEmployee.SelectByID(new Employees { EmpID = pick });
-            }
-
-            if (emp == null || emp.EmpID <= 0)
-                return BadRequest($"Employee not found for reference '{req.Reference}'.");
-
-            string[] s = TerminsRepository.OpenedTerminID(emp.EmpID, req.DepartmentID);
-            GlobalAppData.TermnID = (s != null && s.Length > 0) ? s[0] : "";
-            GlobalAppData.CashJournalPOSID = (s != null && s.Length > 1) ? CommonApp.CheckForInt(s[1]) : 0;
-
-            if (GlobalAppData.TermnID.Equals(""))
-            {
-                var ttermin = GetTermins(emp.EmpID, req.DepartmentID);
-                var blltermin = new TerminsRepository();
-                blltermin.Insert(ttermin);
-            }
-
-            s = TerminsRepository.OpenedTerminID(emp.EmpID, req.DepartmentID);
-            GlobalAppData.TermnID = (s != null && s.Length > 0) ? s[0] : "";
-            GlobalAppData.CashJournalPOSID = (s != null && s.Length > 1) ? CommonApp.CheckForInt(s[1]) : 0;
-
-            if (GlobalAppData.CashJournalPOSID == 0)
-            {
-                GlobalAppData.CashJournalPOSID = NewCashTransaction(emp.EmpID, req.DepartmentID);
-                if (GlobalAppData.CashJournalPOSID == 0)
-                    return StatusCode(500, "Could not create ARKA header.");
-            }
-
-
-            if (req.PaymentID.GetValueOrDefault() > 0)
-            {
-                try
-                {
-                    // POS-paid sale -> call the same existing method
-                    PayTransaction(Math.Abs(req.Amount), req.PaymentID.Value);
-                }
-                catch (Exception ex)
-                {
-                    WriteLog("PayTransactions: " + ex.Message);
-                    return StatusCode(500, "Payment failed: " + ex.Message);
-                }
-            }
-            else
-            {
-                // free movement -> single line in today's POS header
-                var tranCash = TransactionsService.SelectByID(new Transactions { ID = GlobalAppData.CashJournalPOSID });
-                if (tranCash == null || tranCash.ID == 0) return NotFound("Cash journal header not found.");
-
-                var det = BuildCashDetailLikePOS(req.DetailsType, Math.Abs(req.Amount), req.Description, null);
-                det.TransactionID = tranCash.ID;
-                tranCash.TranDetailsColl = new List<TransactionsDetails> { det };
-
-                var svc = new TransactionsService(true, _dbAccess);
-                try
-                {
-                    var err = svc.Update(tranCash);
-                    if (err != 0) return StatusCode(500, $"Update failed. ErrorID={err}");
-                }
-                finally { svc.CloseGlobalConnection(); }
-            }
-
-            // 4) Return whatever the header has now (same effect as POS flow)
-            var respHdr = TransactionsService.SelectByID(new Transactions { ID = GlobalAppData.CashJournalPOSID });
-
-            return Ok(new
-            {
-                ok = true,
-                cashJournalId = GlobalAppData.CashJournalPOSID,
-                transactionTypeId = respHdr?.TransactionTypeID ?? 0, // should be 25
-                terminId = GlobalAppData.TermnID,
-                dateUsed = today.ToString("yyyy-MM-dd"),
-                departmentId = respHdr?.DepartmentID ?? 0,
-                cashAccount = respHdr?.CashAccount ?? "",
-                transactionNo = respHdr?.TransactionNo ?? "",
-                invoiceNo = respHdr?.InvoiceNo ?? "",
-                insertedLines = 1,
-                line = new
-                {
-                    detailsType = req.PaymentID.HasValue && req.PaymentID.Value > 0 ? 4 : req.DetailsType,
-                    signedAmount = (req.DetailsType == 3 || req.DetailsType == 6) ? -Math.Abs(req.Amount) : Math.Abs(req.Amount),
-                    description = req.PaymentID.HasValue ? "Pagese Porosi Web" :
-                                  (string.IsNullOrWhiteSpace(req.Description)
-                                    ? (req.DetailsType == 3 ? "Pagese nga furnitori"
-                                      : req.DetailsType == 4 ? "Arketim nga konsumatori"
-                                      : req.DetailsType == 5 ? "Mandat Arketimi (Depozitë)"
-                                      : req.DetailsType == 6 ? "Mandat Pagese (Tërheqje)"
-                                      : "Lëvizje arke/banke")
-                                    : req.Description.Trim()),
-                    linkedPaymentID = req.PaymentID
-                }
-            });
-        }
-
-        private static TransactionsDetails BuildCashDetailLikePOS(int detailsType, decimal amountAbs, string? description, int? paymentId)
-        {
-            var sign = (detailsType == 3 || detailsType == 6) ? -1m : 1m;
-            var value = amountAbs * sign;
-
-            string desc = !string.IsNullOrWhiteSpace(description)
-                ? description.Trim()
-                : detailsType switch
-                {
-                    3 => "Pagese nga furnitori",
-                    4 => "Arketim nga konsumatori",
-                    5 => "Mandat Arketimi (Depozitë)",
-                    6 => "Mandat Pagese (Tërheqje)",
-                    _ => "Lëvizje arke/banke"
-                };
-
-            var d = new TransactionsDetails
-            {
-                ID = 0,
-                DetailsType = detailsType,     // 3,4,5,6
-                ItemID = desc,
-                ItemName = desc,
-                Quantity = 1,
-                Price = value,
-                Value = value,
-                Mode = 1
-            };
-            if (paymentId.GetValueOrDefault() > 0)
-                d.PaymentID = paymentId.Value;
-
-            return d;
-        }
-
+        
         private Employees ResolveShiftEmployee(string? reference)
         {
             int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var e1) ? e1 : 0;
@@ -2251,7 +1812,7 @@ namespace FinabitAPI.Controllers
             {
 
                 Transactions t = GetBankTransactionForJournal(cashaccount, Dep.CompanyID);
-                TransactionsService bllt = new TransactionsService(true, _dbAccess);
+                TransactionsService bllt = new TransactionsService(_dbAccess);
                 try
                 {
                     bllt.Insert(t, false);

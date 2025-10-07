@@ -13,32 +13,31 @@ namespace FinabitAPI.Service
 {
     public class TransactionsService
     {
-        public TransactionsRepository GlobaTran = new TransactionsRepository();
+        public TransactionsRepository repository = new TransactionsRepository();
         private readonly DBAccess _dbAccess;
-        public TransactionsService(bool b, DBAccess dbAccess)
+        public TransactionsService(DBAccess dbAccess)
         {
             _dbAccess = dbAccess;
-            GlobaTran = new TransactionsRepository(_dbAccess, true);
+            repository = new TransactionsRepository(_dbAccess, true);
         }
-        public TransactionsService()
-        {
-        }
+       
         public int ErrorID
         {
-            get { return GlobaTran.ErrorID; }
-            set { GlobaTran.ErrorID = value; }
+            get { return repository.ErrorID; }
+            set { repository.ErrorID = value; }
         }
         #region Insert
+        
 
         public int Insert(Transactions cls,bool fillItemLotTable)
         {
-            //GlobaTran = new DALTransactions(true);
-            GlobaTran.Insert(cls);
-            if (GlobaTran.ErrorID == 0)
+            //repository = new DALTransactions(true);
+            repository.Insert(cls);
+            if (repository.ErrorID == 0)
             {
                // Users mUser = BLLUsers.GetLoginUserByPDAPIN("Pas insertit te transaksionit");
 
-                TransactionsDetailsService bllDet = new TransactionsDetailsService(GlobaTran);
+                TransactionsDetailsService bllDet = new TransactionsDetailsService(repository);
                 //BLLUsers.GetLoginUserByPDAPIN("Pas insertit te transaksionit 2");
                 if (cls.TranDetailsColl != null && cls.TransactionTypeID != 11)
                 {
@@ -47,22 +46,22 @@ namespace FinabitAPI.Service
                         details.TransactionID = cls.ID;
                         bllDet.Insert(details,fillItemLotTable);
                         //BLLUsers.GetLoginUserByPDAPIN("Pas insertit te detajit 2");
-                        if (GlobaTran.ErrorID != 0)
+                        if (repository.ErrorID != 0)
                         {
                             cls.ErrorDescription = details.ErrorDescription;
                             //BLLUsers.GetLoginUserByPDAPIN("Pas gabimit te detajit" + cls.ErrorDescription);
-                            return GlobaTran.ErrorID;
+                            return repository.ErrorID;
                         }
 
                         if (details.DetailsType == 1)
                         {
                             if (cls.TransactionTypeID != 36)
                             {
-                                GlobaTran.UpdateAveragePrice(details.ItemID, cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
-                                if (GlobaTran.ErrorID != 0)
+                                repository.UpdateAveragePrice(details.ItemID, cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                                if (repository.ErrorID != 0)
                                 {
                                     //cls.ErrorDescription = details.ErrorDescription; // RmsString.getString(BLLGlobal.ErrorID.ToStrijng())
-                                    return GlobaTran.ErrorID;
+                                    return repository.ErrorID;
                                 }
                             }
 
@@ -70,16 +69,16 @@ namespace FinabitAPI.Service
                             {
                                 try
                                 {
-                                    GlobaTran.UpdateAveragePrice(details.ItemID, cls.InternalDepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                                    repository.UpdateAveragePrice(details.ItemID, cls.InternalDepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
                                 }
-                                catch { GlobaTran.ErrorID = 0; }// mos te nderpritet sinkronizimi nese ka gabim 
-                                GlobaTran.ErrorID = 0;
+                                catch { repository.ErrorID = 0; }// mos te nderpritet sinkronizimi nese ka gabim 
+                                repository.ErrorID = 0;
                             }
                         }
 
                         if (details.PaymentID.ToString() != "0")
                         {
-                            GlobaTran.UpdatePayment(details.PaymentID);
+                            repository.UpdatePayment(details.PaymentID);
                         }
                     }
 
@@ -90,16 +89,16 @@ namespace FinabitAPI.Service
 
 
 
-                    if (GlobaTran.ErrorID == -1)
+                    if (repository.ErrorID == -1)
                     {
-                        return GlobaTran.ErrorID;
-                        //BLLUsers.GetLoginUserByPDAPIN(GlobaTran.ErrorDescription);
+                        return repository.ErrorID;
+                        //BLLUsers.GetLoginUserByPDAPIN(repository.ErrorDescription);
                     }
                 }
 
                 if (cls.TransactionTypeID == 36)
                 {
-                    return GlobaTran.ErrorID;
+                    return repository.ErrorID;
                 }
 
                 
@@ -107,39 +106,39 @@ namespace FinabitAPI.Service
                 // krijimi automatik i normativave
                 if (cls.CreateAutomaticRealization)
                 {
-                    //GlobaTran.CreateAutomaticRealization(cls.ID, 1, 0, cls.DepartmentID, cls.InsBy);
-                    //if (GlobaTran.ErrorID != 0)
+                    //repository.CreateAutomaticRealization(cls.ID, 1, 0, cls.DepartmentID, cls.InsBy);
+                    //if (repository.ErrorID != 0)
                     //{
                     //    cls.ErrorDescription = cls.ErrorDescription;
-                    //    return GlobaTran.ErrorID;
+                    //    return repository.ErrorID;
                     //}
                 }
 
                 if (cls.TransactionTypeID == 11)
                 {
-                    //GlobaTran.CreateManualRealization(cls.ID, cls.DepartmentID, 1, cls.Numbers, cls.InsBy);
-                    //if (GlobaTran.ErrorID != 0)
+                    //repository.CreateManualRealization(cls.ID, cls.DepartmentID, 1, cls.Numbers, cls.InsBy);
+                    //if (repository.ErrorID != 0)
                     //{
                     //    cls.ErrorDescription = cls.ErrorDescription;
-                    //    return GlobaTran.ErrorID;
+                    //    return repository.ErrorID;
                     //}
                 }
 
                 // azhurimi i cmimeve te asemblimeve
-                //GlobaTran.UpdateAveragePriceForAssembly(cls.InsBy);
-                //if (GlobaTran.ErrorID != 0)
+                //repository.UpdateAveragePriceForAssembly(cls.InsBy);
+                //if (repository.ErrorID != 0)
                 //{
                 //    cls.ErrorDescription = cls.ErrorDescription;
-                //    return GlobaTran.ErrorID;
+                //    return repository.ErrorID;
                 //}
 
                 // azhurimi i transaksioneve
-                GlobaTran.CreateBatchJournals(cls.InsBy);
-                if (GlobaTran.ErrorID != 0)
+                repository.CreateBatchJournals(cls.InsBy);
+                if (repository.ErrorID != 0)
                 {
                     //BLLUsers.GetLoginUserByPDAPIN("Gabimi ne insertim " + cls.ErrorDescription);
                     cls.ErrorDescription = cls.ErrorDescription;
-                    return GlobaTran.ErrorID;
+                    return repository.ErrorID;
                 }
             }
             else
@@ -165,11 +164,11 @@ namespace FinabitAPI.Service
                 return ErrorID;
             }
 
-            //GlobaTran = new DALTransactions(true);
-            GlobaTran.Update(cls);
-            if (GlobaTran.ErrorID == 0)
+            //repository = new DALTransactions(true);
+            repository.Update(cls);
+            if (repository.ErrorID == 0)
             {
-                TransactionsDetailsService bllDet = new TransactionsDetailsService(GlobaTran);
+                TransactionsDetailsService bllDet = new TransactionsDetailsService(repository);
                 foreach (TransactionsDetails details in cls.TranDetailsColl)
                 {
                     if (cls.TransactionTypeID != 11)
@@ -185,7 +184,7 @@ namespace FinabitAPI.Service
                             case 3:
                                 if (details.PaymentID == 0)
                                 {
-                                    TransactionsDetailsRepository dd = new TransactionsDetailsRepository(GlobaTran);
+                                    TransactionsDetailsRepository dd = new TransactionsDetailsRepository(repository);
                                     TransactionsDetails td = dd.SelectByIDTran(details);
                                     details.PaymentID = td.PaymentID;
                                 }
@@ -193,63 +192,63 @@ namespace FinabitAPI.Service
                                 break;
                         }
 
-                        if (GlobaTran.ErrorID != 0)
+                        if (repository.ErrorID != 0)
                         {
                             cls.ErrorDescription = details.ErrorDescription;
-                            return GlobaTran.ErrorID;
+                            return repository.ErrorID;
                         }
 
                         if (details.DetailsType == 1)
                         {
-                            //GlobaTran.UpdateAveragePrice(details.ItemID, cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
-                            if (GlobaTran.ErrorID != 0)
+                            //repository.UpdateAveragePrice(details.ItemID, cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                            if (repository.ErrorID != 0)
                             {
                                 //cls.ErrorDescription = details.ErrorDescription; // RmsString.getString(BLLGlobal.ErrorID.ToStrijng())
-                                return GlobaTran.ErrorID;
+                                return repository.ErrorID;
                             }
                         }
 
                         if (details.PaymentID.ToString() != "0")
                         {
-                            GlobaTran.UpdatePayment(details.PaymentID);
+                            repository.UpdatePayment(details.PaymentID);
                         }
                     }
                 }
 
                 bllDet.UpdateTranDetFields(cls.ID);
 
-                if (GlobaTran.ErrorID == -1)
+                if (repository.ErrorID == -1)
                 {
-                    //BLLUsers.GetLoginUserByPDAPIN(GlobaTran.ErrorDescription);
+                    //BLLUsers.GetLoginUserByPDAPIN(repository.ErrorDescription);
                 }
             }
 
             // krijimi automatik i normativave
             if (cls.CreateAutomaticRealization)
             {
-                //GlobaTran.CreateAutomaticRealization(cls.ID, 2, cls.ReferenceID, cls.DepartmentID, cls.InsBy);
-                if (GlobaTran.ErrorID != 0)
+                //repository.CreateAutomaticRealization(cls.ID, 2, cls.ReferenceID, cls.DepartmentID, cls.InsBy);
+                if (repository.ErrorID != 0)
                 {
                     cls.ErrorDescription = cls.ErrorDescription;
-                    return GlobaTran.ErrorID;
+                    return repository.ErrorID;
                 }
             }
 
             //if (cls.TransactionTypeID == 11)
             //{
-            //    GlobaTran.CreateManualRealization(cls.ID, cls.DepartmentID, 1, cls.Numbers, cls.InsBy);
-            //    if (GlobaTran.ErrorID != 0)
+            //    repository.CreateManualRealization(cls.ID, cls.DepartmentID, 1, cls.Numbers, cls.InsBy);
+            //    if (repository.ErrorID != 0)
             //    {
             //        cls.ErrorDescription = cls.ErrorDescription;
-            //        return GlobaTran.ErrorID;
+            //        return repository.ErrorID;
             //    }
             //}
 
             // azhurimi i cmimeve te asemblimeve
             if (cls.TransactionTypeID != 24 && cls.TransactionTypeID != 25)
             {
-                //GlobaTran.UpdateAveragePriceForAssembly(cls.InsBy);
-                //if (GlobaTran.ErrorID != 0)
+                //repository.UpdateAveragePriceForAssembly(cls.InsBy);
+                //if (repository.ErrorID != 0)
                 //{
                 //    cls.ErrorDescription = cls.ErrorDescription;
                 //    return cls.ErrorID;
@@ -257,11 +256,11 @@ namespace FinabitAPI.Service
             }
 
             // azhurimi i transaksioneve
-            GlobaTran.CreateBatchJournals(cls.InsBy);
-            if (GlobaTran.ErrorID != 0)
+            repository.CreateBatchJournals(cls.InsBy);
+            if (repository.ErrorID != 0)
             {
                 cls.ErrorDescription = cls.ErrorDescription;
-                return GlobaTran.ErrorID;
+                return repository.ErrorID;
             }
             return 0;
         }
@@ -523,10 +522,9 @@ namespace FinabitAPI.Service
 
         #region GetTransactionNo
 
-        public static string GetTransactionNo(int TransactionType, DateTime Date, int DepartmentID)
+        public string GetTransactionNo(int TransactionType, DateTime Date, int DepartmentID)
         {
-            TransactionsRepository dal = new TransactionsRepository();
-            return dal.GetTransactionNo(TransactionType, Date, DepartmentID);
+            return repository.GetTransactionNo(TransactionType, Date, DepartmentID);
         }
 
         #endregion
@@ -555,8 +553,8 @@ namespace FinabitAPI.Service
 
         public void UpdatePayment(int TransactionID)
         {
-            //GlobaTran = new DALTransactions(true);
-            GlobaTran.UpdatePayment(TransactionID);
+            //repository = new DALTransactions(true);
+            repository.UpdatePayment(TransactionID);
         }
 
         #endregion
@@ -605,8 +603,8 @@ namespace FinabitAPI.Service
 
         //public static void UpdateAveragePrice(string ItemID, int DepartmentID, int TransactionID, DateTime TransactionDate,int UserID)
         //{
-        //    GlobaTran = new DALTransactions(true);
-        //    GlobaTran.UpdateAveragePrice(ItemID, DepartmentID, TransactionID, TransactionDate, UserID);
+        //    repository = new DALTransactions(true);
+        //    repository.UpdateAveragePrice(ItemID, DepartmentID, TransactionID, TransactionDate, UserID);
         //}
 
         #endregion
@@ -655,8 +653,8 @@ namespace FinabitAPI.Service
 
         public void TransferTransactions(DataTable dt, Transactions cls)
         {
-            //GlobaTran = new DALTransactions(true);
-            GlobaTran.TransferTransactions(dt, cls);
+            //repository = new DALTransactions(true);
+            repository.TransferTransactions(dt, cls);
         }
 
         #endregion
@@ -738,8 +736,8 @@ namespace FinabitAPI.Service
 
         public void UpdateJournalStatus(Transactions cls)
         {
-            //GlobaTran = new DALTransactions(true);
-            GlobaTran.UpdateJournalStatus(cls);
+            //repository = new DALTransactions(true);
+            repository.UpdateJournalStatus(cls);
         }
 
         #region UpdateDiscountBatch
@@ -846,7 +844,7 @@ namespace FinabitAPI.Service
 
         public void CloseGlobalConnection()
         {
-            GlobaTran.CloseGlobalConnection();
+            repository.CloseGlobalConnection();
         }
 
         #region CheckForPayment
