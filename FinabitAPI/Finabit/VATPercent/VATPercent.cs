@@ -1,0 +1,51 @@
+using FinabitAPI.Core.Global.dto;
+
+public class VATPercent : BaseClass
+  {
+
+#region Class_Members
+
+
+/// Members
+private int _mVATID; 
+private string _mVATName; 
+private decimal _mVATPercent; 
+
+#endregion 
+
+#region Class_Methods
+
+
+/// Methods
+/// <summary>
+/// The VATID field in the DB
+/// </summary>
+public int VATID
+ { 
+       get { return _mVATID; }
+       set { _mVATID = value; }
+ } 
+
+/// <summary>
+/// The VATName field in the DB
+/// </summary>
+public string VATName
+ { 
+       get { return _mVATName; }
+       set { _mVATName = value; }
+ } 
+
+/// <summary>
+/// The VATPercent field in the DB
+/// </summary>
+public decimal VATPercents
+ { 
+       get { return _mVATPercent; }
+       set { _mVATPercent = value; }
+ } 
+
+
+#endregion 
+public string DatexGroup { get; set; }
+public string NovitusGroup { get; set; }
+  }
