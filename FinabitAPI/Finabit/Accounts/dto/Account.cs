@@ -2,6 +2,7 @@
 using FinabitAPI.Finabit.Account.dto;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Web;
 
@@ -137,7 +138,11 @@ namespace FinabitAPI
         }
 
         //public DataTable Users { get; set; }
-
+   public DataTable Users { get; set; }
+        public bool LlogariKalimtare { get; set; }
+        public int CurrencyID { get; set; }
+        public decimal CurrencyRate { get; set; }
+        public bool HomeCurrency { get; set; }
         #endregion
     }
 }

@@ -66,6 +66,22 @@ builder.Services.AddScoped<ICustomizationRepository, CustomizationRepository>();
 builder.Services.AddScoped<FinabitAPI.Finabit.SystemData.SystemDataRepository>();
 builder.Services.AddScoped<FinabitAPI.Finabit.SystemData.SystemDataService>();
 
+// Server services
+builder.Services.AddScoped<FinabitAPI.Core.Server.ServerRepository>();
+builder.Services.AddScoped<FinabitAPI.Core.Server.ServerService>();
+
+// VATPercent services
+builder.Services.AddScoped<FinabitAPI.Finabit.VATPercent.VATPercentRepository>();
+builder.Services.AddScoped<FinabitAPI.Finabit.VATPercent.VATPercentService>();
+
+// HAccomodation services
+builder.Services.AddScoped<FinabitAPI.Hotel.HAccomodation.HAccomodationRepository>();
+builder.Services.AddScoped<FinabitAPI.Hotel.HAccomodation.HAccomodationService>();
+
+// ExtraCharge services
+builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeRepository>();
+builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeService>();
+
 builder.Services.AddControllers();
 
 const string MasterKeyBase64 = "hZq8fQVt9wqzYQx0c6Pq9r2C7a0rG2q0bqZpH0m1y4g=";
