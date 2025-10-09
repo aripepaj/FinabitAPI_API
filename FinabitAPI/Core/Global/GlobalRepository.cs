@@ -14,21 +14,47 @@ namespace FinabitAPI.Core.Global
 {
     public class GlobalRepository
     {
-        #region GetConnection
+        // old path still works as a fallback
+        public static string? ConnectionString { get; private set; }
 
-
-        public static string ConnectionString { get; private set; }
+        // DI hooks
+        private static IServiceProvider? _rootServices;
+        private static IHttpContextAccessor? _http;
 
         public static void Initialize(IConfiguration configuration)
         {
             ConnectionString = configuration.GetConnectionString("strCnn");
         }
 
+        public static void UseDbAccess(IServiceProvider services)
+        {
+            _rootServices = services;
+            _http = services.GetService<IHttpContextAccessor>();
+        }
+
         public static SqlConnection GetConnection()
         {
-            return new SqlConnection(ConnectionString);
+            var http = _http?.HttpContext;
+            if (http != null)
+            {
+                var db = http.RequestServices.GetService<FinabitAPI.Utilis.DBAccess>();
+                if (db != null) return db.GetConnection();
+            }
+
+            if (_rootServices != null)
+            {
+                using var scope = _rootServices.CreateScope();
+                var db = scope.ServiceProvider.GetService<FinabitAPI.Utilis.DBAccess>();
+                if (db != null) return db.GetConnection();
+            }
+
+            if (!string.IsNullOrWhiteSpace(ConnectionString))
+                return new SqlConnection(ConnectionString);
+
+            throw new InvalidOperationException(
+                "GlobalRepository: no way to create SqlConnection. " +
+                "Call GlobalRepository.UseDbAccess(app.Services) or Initialize(configuration).");
         }
-        #endregion
 
         #region ListTables
 

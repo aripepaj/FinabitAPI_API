@@ -7,11 +7,18 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 using FinabitAPI.Finabit.Transaction.dto;
 using FinabitAPI.Core.Global;
+using FinabitAPI.Utilis;
 
 namespace FinabitAPI.Finabit.Transaction
 {
     public class TransactionsDetailsRepository
     {
+
+         private readonly DBAccess _db;
+        public TransactionsDetailsRepository(DBAccess db)
+        {
+            _db = db;
+        }
         TransactionsRepository GlobalTran = new TransactionsRepository();
 
         public TransactionsDetailsRepository(TransactionsRepository _GlobalTran)
@@ -19,11 +26,11 @@ namespace FinabitAPI.Finabit.Transaction
             GlobalTran = _GlobalTran;
         }
 
-        public TransactionsDetailsRepository(){}
+        public TransactionsDetailsRepository() { }
 
         #region Insert
 
-        public void Insert(TransactionsDetails cls,bool fillItemLotTable)
+        public void Insert(TransactionsDetails cls, bool fillItemLotTable)
         {
             //SqlConnection cnn = DALGlobal.GetConnection();
             //SqlCommand cmd = new SqlCommand("spTransactionsDetailsInsert", cnn);
@@ -841,7 +848,7 @@ namespace FinabitAPI.Finabit.Transaction
             {
                 string exp = ex.Message;
                 GlobalTran.ErrorID = -1;
-                
+
                 //cnn.Close();
             }
             return cls;
@@ -935,7 +942,7 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = TransactionID;
             cmd.Parameters.Add(param);
 
-           
+
 
             return GlobalRepository.ListTables(cmd);
         }
@@ -986,7 +993,7 @@ namespace FinabitAPI.Finabit.Transaction
             }
             catch (Exception ex)
             {
-                
+
                 cnn.Close();
             }
         }
@@ -1095,7 +1102,7 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.Account = Convert.ToString(dr["Account"]);
                         cls.Quantity = Convert.ToDecimal(dr["Quantity"]);
                         cls.Price = Convert.ToDecimal(dr["Price"]);
-                        cls.VATPrice = dr["VATPrice"] == DBNull.Value ? default: Convert.ToDecimal(dr["VATPrice"]);
+                        cls.VATPrice = dr["VATPrice"] == DBNull.Value ? default : Convert.ToDecimal(dr["VATPrice"]);
                         //cls.CostPrice = Convert.ToDecimal(dr["CostPrice"]);
                         cls.Discount = Convert.ToDecimal(dr["Discount"]);
                         cls.PriceWithDiscount = Convert.ToDecimal(dr["PriceWithDiscount"]);
@@ -1345,7 +1352,7 @@ namespace FinabitAPI.Finabit.Transaction
             cmd.CommandType = CommandType.StoredProcedure;
 
             //SqlCommand cmd = DALGlobal.SqlCommandForTran_SP("spUpdateOrderStatus");
-            
+
             SqlParameter param;
             param = new SqlParameter("@DetailID", SqlDbType.Int);
             param.Direction = ParameterDirection.Input;
@@ -1370,7 +1377,7 @@ namespace FinabitAPI.Finabit.Transaction
 
         #endregion
 
-         public DataTable GetDetailsReportSubOrder(int TransactionID, bool PrintAll)
+        public DataTable GetDetailsReportSubOrder(int TransactionID, bool PrintAll)
         {
             DataTable dt = new DataTable();
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -1403,7 +1410,7 @@ namespace FinabitAPI.Finabit.Transaction
             return dt;
         }
 
-        
+
         #region MakeSubOrderReceived
 
         public void MakeSubOrderreceived(int TransactionID)
@@ -1439,7 +1446,8 @@ namespace FinabitAPI.Finabit.Transaction
             param.Direction = ParameterDirection.Input;
             param.Value = TransactionID;
             cmd.Parameters.Add(param);
-            try {
+            try
+            {
                 cnn.Open();
                 Nr = (int)cmd.ExecuteScalar();
                 cnn.Close();
@@ -1461,7 +1469,7 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = TransactionID;
             cmd.Parameters.Add(param);
 
-           
+
             return GlobalRepository.ListTables(cmd);
         }
         public void MakeTransactionPrinted(int TransactionID)
@@ -1612,12 +1620,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         public static void UpdateWebHostNameStatus()
         {
-           
+
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spUpdateWebHostNameStatus", cnn);
             cmd.CommandType = CommandType.StoredProcedure;
 
-            
+
             try
             {
                 cnn.Open();
@@ -1626,7 +1634,61 @@ namespace FinabitAPI.Finabit.Transaction
             }
             catch { cnn.Close(); }
 
-          
+
+        }
+        
+
+         public static List<TransactionDetailDistinctDto> GetLast300DistinctDetails()
+        {
+            var list = new List<TransactionDetailDistinctDto>();
+            using (SqlConnection cnn = GlobalRepository.GetConnection())
+            using (SqlCommand cmd = new SqlCommand("spTransactionsDetails_Distinct_API", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                try
+                {
+                    cnn.Open();
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        int ordID               = r.GetOrdinal("ID");
+                        int ordTransactionID    = r.GetOrdinal("TransactionID");
+                        int ordDetailsType      = r.GetOrdinal("DetailsType");
+                        int ordItemID           = r.GetOrdinal("ItemID");
+                        int ordItemName         = r.GetOrdinal("ItemName");
+                        int ordAccount          = r.GetOrdinal("Account");
+                        int ordAmount           = r.GetOrdinal("Amount");          
+                        int ordTransactionNo    = r.GetOrdinal("TransactionNo");
+                        int ordTransactionDate  = r.GetOrdinal("TransactionDate");
+                        int ordPartnerID        = r.GetOrdinal("PartnerID");
+                        int ordMemo             = r.GetOrdinal("Memo");
+
+                        while (r.Read())
+                        {
+                            var row = new TransactionDetailDistinctDto
+                            {
+                                ID              = r.GetInt32(ordID),
+                                TransactionID   = r.GetInt32(ordTransactionID),
+                                DetailsType     = r.GetInt32(ordDetailsType),
+                                ItemID          = r.IsDBNull(ordItemID) ? "" : r.GetString(ordItemID),
+                                ItemName        = r.IsDBNull(ordItemName) ? "" : r.GetString(ordItemName),
+                                Account         = r.IsDBNull(ordAccount) ? "" : r.GetString(ordAccount),
+                                Amount          = r.IsDBNull(ordAmount) ? 0m : r.GetDecimal(ordAmount),
+                                TransactionNo   = r.IsDBNull(ordTransactionNo) ? "" : r.GetString(ordTransactionNo),
+                                TransactionDate = r.GetDateTime(ordTransactionDate),
+                                PartnerID       = r.IsDBNull(ordPartnerID) ? (int?)null : r.GetInt32(ordPartnerID),
+                                Memo            = r.IsDBNull(ordMemo) ? "" : r.GetString(ordMemo)
+                            };
+                            list.Add(row);
+                        }
+                    }
+                }
+                finally
+                {
+                    if (cnn.State != ConnectionState.Closed) cnn.Close();
+                }
+            }
+            return list;
         }
     }
 }

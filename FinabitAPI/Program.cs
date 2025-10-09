@@ -192,5 +192,6 @@ app.MapGet("/config-debug", (IConfiguration cfg) =>
     return Results.Text("DebugView not available (cfg is not IConfigurationRoot).");
 }).AllowAnonymous();
 
+GlobalRepository.UseDbAccess(app.Services);
 
 app.Run();

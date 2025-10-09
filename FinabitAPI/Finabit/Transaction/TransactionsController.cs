@@ -1171,6 +1171,21 @@ namespace FinabitAPI.Controllers
             return Ok(new { inserted = dt.Rows.Count, dossierId = form.DossierId, mode = form.ScanDocMode });
         }
 
+        [HttpGet("DistinctLast300")]
+        public ActionResult<List<TransactionDetailDistinctDto>> GetDistinctLast300()
+        {
+            try
+            {
+                var rows = TransactionsDetailsRepository.GetLast300DistinctDetails();
+                return Ok(rows);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ok = false, message = ex.Message });
+            }
+        }
+
+
         private List<Dictionary<string, object>> ToTableRows(DataTable dt)
         {
             var rows = new List<Dictionary<string, object>>();
