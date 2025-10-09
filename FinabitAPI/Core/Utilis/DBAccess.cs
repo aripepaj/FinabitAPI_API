@@ -2190,7 +2190,7 @@ namespace FinabitAPI.Utilis
             cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
             cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
             cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
-            cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 0 }); // legacy mode
+            cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 1 }); // legacy mode
 
             try
             {
@@ -2238,8 +2238,9 @@ namespace FinabitAPI.Utilis
                     VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"])
                 };
             }
-            catch
+            catch (Exception ex)
             {
+                String msg = ex.Message;
                 return null;
             }
         }
