@@ -1567,7 +1567,7 @@ namespace FinabitAPI
             try
             {
                 using var cnn = _dbAccess.GetConnection();
-                using var cmd = new SqlCommand("spImportPartners", cnn) { CommandType = CommandType.StoredProcedure };
+                using var cmd = new SqlCommand("spImportPartners_API", cnn) { CommandType = CommandType.StoredProcedure };
                 var tvp = new SqlParameter("@ImportPartners", SqlDbType.Structured)
                 {
                     TypeName = "dbo.ImportPartners",
