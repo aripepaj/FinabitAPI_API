@@ -51,6 +51,7 @@ builder.Services.AddScoped<ITenantAccessor, HttpContextTenantAccessor>();
 builder.Services.AddScoped<DBAccess>();
 builder.Services.AddHostedService<DatabaseBootstrapper>();
 builder.Services.AddScoped<UsersRepository>();
+builder.Services.AddScoped<FinabitAPI.Core.User.UsersService>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 builder.Services.AddScoped<AccountDetailsRepository>();
@@ -81,6 +82,14 @@ builder.Services.AddScoped<FinabitAPI.Hotel.HAccomodation.HAccomodationService>(
 // ExtraCharge services
 builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeRepository>();
 builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeService>();
+
+// HRates services
+builder.Services.AddScoped<FinabitAPI.Hotel.HRates.HRatesRepository>();
+builder.Services.AddScoped<FinabitAPI.Hotel.HRates.HRatesService>();
+
+// HPansion services
+builder.Services.AddScoped<FinabitAPI.Hotel.HPansion.HPansionRepository>();
+builder.Services.AddScoped<FinabitAPI.Hotel.HPansion.HPansionService>();
 
 builder.Services.AddControllers();
 
