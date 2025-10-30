@@ -1,5 +1,5 @@
-﻿
-
+﻿using System.Data;
+using System.Text.RegularExpressions;
 using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Global.dto;
 using FinabitAPI.Core.Utilis;
@@ -15,8 +15,6 @@ using FinabitAPI.Service;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using System.Data;
-using System.Text.RegularExpressions;
 
 namespace FinabitAPI.Controllers
 {
@@ -31,7 +29,12 @@ namespace FinabitAPI.Controllers
         private readonly DepartmentRepository _dalDepartment;
         private TransactionsService transactionsService => new TransactionsService(_dbAccess);
 
-        public TransactionsController(IConfiguration configuration, DBAccess dbAccess, EmployeesRepository dalEmployee, DepartmentRepository dalDepartment)
+        public TransactionsController(
+            IConfiguration configuration,
+            DBAccess dbAccess,
+            EmployeesRepository dalEmployee,
+            DepartmentRepository dalDepartment
+        )
         {
             _configuration = configuration;
             _dbAccess = dbAccess;
@@ -47,7 +50,6 @@ namespace FinabitAPI.Controllers
         //    list = DBAccess.M_GetItemsStateList(DepartmentID);
         //    return list;
         //}
-
 
         [HttpPost("TransactionInsert")]
         public ActionResult<XMLTransactions> XMLTransaction_Insert([FromBody] XMLTransactions tt)
@@ -74,7 +76,16 @@ namespace FinabitAPI.Controllers
             Dep.ID = tt.DepartmentID;
             Dep = _dbAccess.SelectDepartmentByID(Dep);
 
-            if ((tt.PaymentValue != 0 && (tt.TransactionType != 15 && tt.TransactionType != 10 && tt.TransactionType != 17)))
+            if (
+                (
+                    tt.PaymentValue != 0
+                    && (
+                        tt.TransactionType != 15
+                        && tt.TransactionType != 10
+                        && tt.TransactionType != 17
+                    )
+                )
+            )
             {
                 TranCash.ID = GetBankJournalID(tt.CashAccount, Dep.CompanyID);
                 TranCash = TransactionsService.SelectByID(TranCash);
@@ -128,7 +139,17 @@ namespace FinabitAPI.Controllers
                 //bllt.CloseGlobalConnection();
                 //========================================================
                 // PAYMENT
-                if ((tt.PaymentValue != 0 && (tt.TransactionType != 15 && tt.TransactionType != 10 && tt.TransactionType != 17)) && bllt.ErrorID == 0)
+                if (
+                    (
+                        tt.PaymentValue != 0
+                        && (
+                            tt.TransactionType != 15
+                            && tt.TransactionType != 10
+                            && tt.TransactionType != 17
+                        )
+                    )
+                    && bllt.ErrorID == 0
+                )
                 {
                     if (TranCash.ID != 0)
                     {
@@ -154,8 +175,7 @@ namespace FinabitAPI.Controllers
                         //    }
                         //}
 
-
-                        Detail.ItemName = "";// user.UserName;
+                        Detail.ItemName = ""; // user.UserName;
                         Detail.Quantity = 1;
                         decimal Input = tt.PaymentValue;
                         decimal OutPut = 0;
@@ -182,9 +202,7 @@ namespace FinabitAPI.Controllers
                         }
                     }
                 }
-
             }
-
             catch
             {
                 bllt.ErrorID = -1;
@@ -193,7 +211,6 @@ namespace FinabitAPI.Controllers
             finally
             {
                 bllt.CloseGlobalConnection();
-
             }
             //}
             //fundi:
@@ -232,16 +249,14 @@ namespace FinabitAPI.Controllers
             //}fv
             //catch (Exception ex) { Users_GetLoginUserByPIN(ex.Message); }
             return tt;
-
-
-
         }
 
         private bool printTermik = false;
 
-
         [HttpPost("TransactionInsertWithPrint")]
-        public ActionResult<Transactions> TransactionInsertWithPrint([FromBody] TransactionRequest transaction)
+        public ActionResult<Transactions> TransactionInsertWithPrint(
+            [FromBody] TransactionRequest transaction
+        )
         {
             Transactions t = transaction.t;
             TransactionsDetails detailsList = transaction.detailsList;
@@ -260,7 +275,6 @@ namespace FinabitAPI.Controllers
                 }
             }
 
-
             OptionsRepository optionsRepository = new OptionsRepository(_dbAccess);
             var printersForPOS = optionsRepository.GetPrintersForPOS();
             var pattern = @"^Printeri \d+$";
@@ -268,11 +282,10 @@ namespace FinabitAPI.Controllers
                 .Where(printer => Regex.IsMatch(printer.PrinterAlias, pattern))
                 .ToList();
 
-
-
             printTermik = filteredPrinters.Count > 0;
-            var fiscalPrinter = printersForPOS.Where(printer => printer.PrinterAlias.ToUpper().Contains("FISKAL")).FirstOrDefault();
-
+            var fiscalPrinter = printersForPOS
+                .Where(printer => printer.PrinterAlias.ToUpper().Contains("FISKAL"))
+                .FirstOrDefault();
 
             bool PrintALL = transaction.PrintALL;
             bool isOrder = true;
@@ -287,19 +300,22 @@ namespace FinabitAPI.Controllers
                 WriteLog("Termin " + t.Reference);
                 Employees emp = new Employees();
 
-
-                int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var tmpEmp1) ? tmpEmp1 : 0;
-                int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var tmpEmp2) ? tmpEmp2 : 0;
+                int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var tmpEmp1)
+                    ? tmpEmp1
+                    : 0;
+                int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var tmpEmp2)
+                    ? tmpEmp2
+                    : 0;
 
                 // Nderrimi i paradites
                 if (t.Reference.Equals("1") && emp1 > 0)
                 {
-                    emp.EmpID = emp1;// 32;
+                    emp.EmpID = emp1; // 32;
                 }
                 // Nderrimi i pasdites
                 else if (t.Reference.Equals("2") && emp2 > 0)
                 {
-                    emp.EmpID = emp2;// 21;
+                    emp.EmpID = emp2; // 21;
                 }
                 else
                 {
@@ -314,22 +330,15 @@ namespace FinabitAPI.Controllers
 
                 if (GlobalAppData.TermnID.Equals(""))
                 {
-
                     Termins ttermin = GetTermins(emp.EmpID, t.DepartmentID);
                     TerminsRepository blltermin = new TerminsRepository();
 
-
                     blltermin.Insert(ttermin);
-
-
-
                 }
                 s = TerminsRepository.OpenedTerminID(emp.EmpID, t.DepartmentID);
                 GlobalAppData.TermnID = s[0];
                 GlobalAppData.CashJournalPOSID = CommonApp.CheckForInt(s[1]);
             }
-
-
 
             //return t;
             //  Users_GetLoginUserByPIN("Useri:" + POSUserName);
@@ -356,15 +365,12 @@ namespace FinabitAPI.Controllers
             }
             catch
             {
-
                 chkChecked = false;
             }
             string[] pr = filteredPrinters
-                 .Select(printer => printer.PrinterPath) // Get the 'Value' field from each printer object
-                 .ToArray();
+                .Select(printer => printer.PrinterPath) // Get the 'Value' field from each printer object
+                .ToArray();
             //pr = strPr.ToArray();
-
-
 
             bool CloseGlobal = true;
             Transactions TranCash = new Transactions();
@@ -376,7 +382,7 @@ namespace FinabitAPI.Controllers
                     TranCash = TransactionsService.SelectByID(TranCash);
                 }
             }
-            string TableName = "table";// BLLTables.SelectByID(new BELayer.Tables() { ID = t.TableID }).TableName;
+            string TableName = "table"; // BLLTables.SelectByID(new BELayer.Tables() { ID = t.TableID }).TableName;
             DataTable SDTable = GlobalRepository.ListSystemDataTable(_dbAccess);
 
             ItemLocationRepository itemLocationRepository = new ItemLocationRepository(_dbAccess);
@@ -384,7 +390,11 @@ namespace FinabitAPI.Controllers
             bool GenerateTranNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
             if (GenerateTranNo || String.IsNullOrEmpty(transaction.t.TransactionNo))
             {
-                transaction.t.TransactionNo = transactionsService.GetTransactionNo(transaction.t.TransactionTypeID, t.TransactionDate, t.DepartmentID);
+                transaction.t.TransactionNo = transactionsService.GetTransactionNo(
+                    transaction.t.TransactionTypeID,
+                    t.TransactionDate,
+                    t.DepartmentID
+                );
             }
 
             transaction.t.InvoiceNo = transaction.t.TransactionNo;
@@ -398,8 +408,8 @@ namespace FinabitAPI.Controllers
             // Fix for CS0029: Convert ActionResult<List<string>> to List<string> by accessing the Value property
             List<string> o = GetOptionsList().Value;
             int PartID = t.PartnerID;
-            int OptionsPartner =CommonApp.CheckForInt(o[0]);
-           // int.TryParse(o[0], out PartID);
+            int OptionsPartner = CommonApp.CheckForInt(o[0]);
+            // int.TryParse(o[0], out PartID);
 
             Partner P;
             // Gjetja e Partnerit me Email
@@ -412,7 +422,7 @@ namespace FinabitAPI.Controllers
                 }
             }
             // Gjetja e Partnerit me Emer Mbiemer
-            if (PartID == 0 && t.PartnerName!="")
+            if (PartID == 0 && t.PartnerName != "")
             {
                 int part = PartnerRepository.SelectByName(t.PartnerName);
                 if (part != 0)
@@ -422,12 +432,12 @@ namespace FinabitAPI.Controllers
             }
 
             Partner newPartner = new Partner();
-            P = PartnerRepository.SelectByID(new Partner { ID = t.PartnerID == 0 ? PartID : t.PartnerID });
-
+            P = PartnerRepository.SelectByID(
+                new Partner { ID = t.PartnerID == 0 ? PartID : t.PartnerID }
+            );
 
             if (P.ID == 0 && !String.IsNullOrEmpty(t.PartnerName))
             {
-
                 newPartner.Email = t.PartnerEmail;
                 newPartner.PartnerName = t.PartnerName;
                 newPartner.Tel1 = t.PartnersPhoneNo;
@@ -436,14 +446,7 @@ namespace FinabitAPI.Controllers
                 newPartner.PartnerType = type;
                 PartnerRepository dalPartner = new PartnerRepository(_dbAccess);
                 dalPartner.Insert(newPartner);
-
-
-
             }
-
-           
-
-         
 
             t.PartnerName = P.PartnerName;
             t.PartnerID = P.ID > 0 ? P.ID : newPartner.ID;
@@ -458,8 +461,7 @@ namespace FinabitAPI.Controllers
 
             t.TranDetailsColl = GetTranDetails(transaction.t);
 
-
-           var Totals = GetRowsTotalValue(t.TranDetailsColl);
+            var Totals = GetRowsTotalValue(t.TranDetailsColl);
             t.RABAT = Totals[2];
             t.Value = Totals[0];
             t.VATValue = Totals[1];
@@ -471,12 +473,10 @@ namespace FinabitAPI.Controllers
                 t.ErrorID = bllt.Insert(t, false);
                 if (bllt.ErrorID == 0)
                 {
-
                     if (!t.POSPaid || TranCash.ID == 0)
                     {
                         try
                         {
-
                             //ThreadPool.QueueUserWorkItem(delegate
                             //{
                             if (!OptionsData.UseSubOrders)
@@ -491,8 +491,6 @@ namespace FinabitAPI.Controllers
                                 //WriteLog("U kry printimi");
                             }
 
-
-
                             if (OptionsData.PrintFiscalAfterEachOrder && PrintFiscal)
                             {
                                 //Users_GetLoginUserByPIN("Hyn per fiskal");
@@ -503,24 +501,20 @@ namespace FinabitAPI.Controllers
                                 ////Users_GetLoginUserByPIN("Kryhet printimi ne fiskal");
                             }
                             //});
-
-
                         }
                         catch (Exception ex)
                         {
-                            //Users_GetLoginUserByPIN("Ka error ");      
-                            bllt.ErrorID = -1; t.ErrorID = -1;
+                            //Users_GetLoginUserByPIN("Ka error ");
+                            bllt.ErrorID = -1;
+                            t.ErrorID = -1;
                             try
                             {
                                 WriteLog(ex.Message);
                             }
                             catch { }
                         }
-
-
                         finally
                         {
-
                             bllt.CloseGlobalConnection();
 
                             //Users_GetLoginUserByPIN("E mbyll Koneksionin");
@@ -529,14 +523,12 @@ namespace FinabitAPI.Controllers
                         //{
                         //    PrintInvoice(t, isSelectedPayment, 1, PosUSR, pr, TableName, SDTable, ILList,chkChecked);
                         //}
-                        //catch 
+                        //catch
                         //{
-
 
                         //}
                     }
 
-                  
                     #region LoyaltyCard
                     if (t.CardID != 0 && t.TransactionTypeID == 2)
                     {
@@ -601,34 +593,24 @@ namespace FinabitAPI.Controllers
                         //}
                     }
                     #endregion
-
-
-
                 }
                 //========================================================
                 // PAYMENT
                 if (t.POSPaid && bllt.ErrorID == 0)
                 {
-
                     if (t.TransactionTypeID == 2)
                     {
                         //21 Pasdite
                         //32 Paradite
-                       try
+                        try
                         {
                             PayTransaction(t.AllValue, t.ID);
-
                         }
                         catch (Exception ex)
                         {
                             WriteLog("PayTransactions:" + ex.Message);
                         }
-                      
-
-
                     }
-
-
 
                     if (TranCash.ID != 0)
                     {
@@ -652,7 +634,11 @@ namespace FinabitAPI.Controllers
                                 //});
                             }
                         }
-                        catch { bllt.ErrorID = -1; t.ErrorID = -1; }
+                        catch
+                        {
+                            bllt.ErrorID = -1;
+                            t.ErrorID = -1;
+                        }
 
                         if (t.ErrorID == 0)
                         {
@@ -682,7 +668,6 @@ namespace FinabitAPI.Controllers
                 bllt.ErrorID = -1;
                 t.ErrorDescription = eee.Message;
                 //Users_GetLoginUserByPIN("KA error 2 "+eee.Message);
-
             }
             finally
             {
@@ -698,7 +683,10 @@ namespace FinabitAPI.Controllers
                     //PrintInvoice(t, isSelectedPayment, 1, PosUSR, pr, TableName, SDTable, ILList, chkChecked, PrintALL);
                 }
             }
-            catch { bllt.CloseGlobalConnection(); }
+            catch
+            {
+                bllt.CloseGlobalConnection();
+            }
             if (t.ErrorDescription != "")
             {
                 try
@@ -709,7 +697,9 @@ namespace FinabitAPI.Controllers
                         if (bllt != null)
                             bllt.CloseGlobalConnection();
                     }
-                    catch (Exception ex) { /*Users_GetLoginUserByPIN(ex.Message);*/ }
+                    catch (Exception ex)
+                    { /*Users_GetLoginUserByPIN(ex.Message);*/
+                    }
                 }
                 catch { }
             }
@@ -717,9 +707,11 @@ namespace FinabitAPI.Controllers
             return t;
         }
 
-
         [HttpGet("UpdateTransactionDriver")]
-        public ActionResult<bool> UpdateTransactionDriver([FromQuery] int TransactionID, [FromQuery] int EmpID)
+        public ActionResult<bool> UpdateTransactionDriver(
+            [FromQuery] int TransactionID,
+            [FromQuery] int EmpID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.UpdateDriverInTransaction(TransactionID, EmpID);
@@ -732,23 +724,41 @@ namespace FinabitAPI.Controllers
             return optionsRepository.GetOptionsList();
         }
 
-
         [HttpGet("OrdersList")]
-        public ActionResult<List<Orders>> OrdersList([FromQuery] string FromDate, [FromQuery] string ToDate)
+        public ActionResult<List<Orders>> OrdersList(
+            [FromQuery] string FromDate,
+            [FromQuery] string ToDate
+        )
         {
             return GetOrders(FromDate, ToDate);
         }
 
         [HttpPost("clone")]
-        public async Task<ActionResult<Transactions>> CloneWithProc(CloneTransactionRequest body, CancellationToken ct)
+        public async Task<ActionResult<Transactions>> CloneWithProc(
+            CloneTransactionRequest body,
+            CancellationToken ct
+        )
         {
-            if (body.TransactionId <= 0 || body == null)
+            if (body == null || body.TransactionId <= 0)
                 return BadRequest("transactionId and newDate are required.");
+
+            var src = TransactionsService.SelectByID(new Transactions { ID = body.TransactionId });
+            if (src == null || src.ID == 0)
+                return NotFound($"Source transaction {body.TransactionId} not found.");
+
+            var newTransactionNo = _dbAccess
+                .GetTransactionNo(src.TransactionTypeID, body.NewDate, src.DepartmentID)
+                .ToString();
 
             int newId;
             try
             {
-                newId = await _dbAccess.CloneTransactionExactAsync(body.TransactionId, body.NewDate, ct);
+                newId = await _dbAccess.CloneTransactionExactAsync(
+                    body.TransactionId,
+                    body.NewDate,
+                    newTransactionNo,
+                    ct
+                );
             }
             catch (Exception ex)
             {
@@ -757,7 +767,10 @@ namespace FinabitAPI.Controllers
 
             var cloned = TransactionsService.SelectByID(new Transactions { ID = newId });
             if (cloned == null || cloned.ID == 0)
-                return StatusCode(500, $"Cloned transaction {newId} inserted, but could not be loaded.");
+                return StatusCode(
+                    500,
+                    $"Cloned transaction {newId} inserted, but could not be loaded."
+                );
 
             return Ok(cloned);
         }
@@ -771,20 +784,30 @@ namespace FinabitAPI.Controllers
             [FromQuery] string ItemName = null,
             [FromQuery] string PartnerName = null,
             [FromQuery] string LocationName = null,
-            CancellationToken ct = default)      
+            CancellationToken ct = default
+        )
         {
-            var rows = await GetTransactionsAsync(FromDate, ToDate, TransactionTypeID, ItemID, ItemName, PartnerName, LocationName, ct);
+            var rows = await GetTransactionsAsync(
+                FromDate,
+                ToDate,
+                TransactionTypeID,
+                ItemID,
+                ItemName,
+                PartnerName,
+                LocationName,
+                ct
+            );
             return Ok(rows);
         }
 
-        private void PayTransaction(decimal PaymentValue,int id)
+        private void PayTransaction(decimal PaymentValue, int id)
         {
             Transactions TranCash = new Transactions();
             TranCash.ID = GlobalAppData.CashJournalPOSID;
 
             if (TranCash.ID == 0)
             {
-                    return;
+                return;
             }
 
             TranCash = TransactionsService.SelectByID(TranCash);
@@ -797,19 +820,22 @@ namespace FinabitAPI.Controllers
             TranCash.InsBy = 1;
             TransactionsService bllt = new TransactionsService(_dbAccess);
             bllt.Update(TranCash);
-            if (bllt.ErrorID==0)
+            if (bllt.ErrorID == 0)
             {
                 bllt.CloseGlobalConnection();
                 //this.DialogResult = DialogResult.OK;
-               
-
             }
             else
             {
                 bllt.CloseGlobalConnection();
             }
         }
-        private List<TransactionsDetails> GetDetailsForPayment(Transactions ThisTran, int TranID, decimal PaymentValue)
+
+        private List<TransactionsDetails> GetDetailsForPayment(
+            Transactions ThisTran,
+            int TranID,
+            decimal PaymentValue
+        )
         {
             List<TransactionsDetails> tranDetails = new List<TransactionsDetails>();
             TransactionsDetails clsDet;
@@ -819,15 +845,13 @@ namespace FinabitAPI.Controllers
             if (2 == 2)
             {
                 clsDet.DetailsType = 4;
-
             }
             else
             {
                 clsDet.DetailsType = 4;
-
             }
             clsDet.TransactionID = TranID;
-            clsDet.ItemID = "Pagese Porosi Web";// CostumerID.ToString();
+            clsDet.ItemID = "Pagese Porosi Web"; // CostumerID.ToString();
             //Users user = new Users();
             //user.ID = UserID;
             //user = BLLUsers.SelectByID(user);
@@ -850,16 +874,12 @@ namespace FinabitAPI.Controllers
                 clsDet.IsPrintFiscalInvoice = false;
             }
             tranDetails.Add(clsDet);
-           // clsDet.CompanyID = CompanyID;
-
+            // clsDet.CompanyID = CompanyID;
 
             return tranDetails;
-
-
-
         }
 
-        private Transactions GetCashTransaction(int EmpID,int departmentID)
+        private Transactions GetCashTransaction(int EmpID, int departmentID)
         {
             Transactions cls = new Transactions();
             cls.ID = 0;
@@ -877,10 +897,24 @@ namespace FinabitAPI.Controllers
             cls.EmpID = EmpID;
             cls.DepartmentID = departmentID;
             cls.CompanyID = dep.CompanyID; // Kompania e cila meren nga depo lokale
-                                           //-----------------------------------------------------------------------------
+            //-----------------------------------------------------------------------------
 
-            cls.InvoiceNo = DateTime.Now.ToString("ddMMyyy_HH") + "_" + e.FirstName + " " + e.LastName + " - " + dep.DepartmentName;
-            cls.TransactionNo = DateTime.Now.ToString("ddMMyyy_HH") + "_" + e.FirstName + " " + e.LastName + " - " + dep.DepartmentName;
+            cls.InvoiceNo =
+                DateTime.Now.ToString("ddMMyyy_HH")
+                + "_"
+                + e.FirstName
+                + " "
+                + e.LastName
+                + " - "
+                + dep.DepartmentName;
+            cls.TransactionNo =
+                DateTime.Now.ToString("ddMMyyy_HH")
+                + "_"
+                + e.FirstName
+                + " "
+                + e.LastName
+                + " - "
+                + dep.DepartmentName;
             cls.TransactionTypeID = 25;
             cls.InvoiceDate = DateTime.Now;
             cls.TransactionDate = DateTime.Now;
@@ -892,7 +926,7 @@ namespace FinabitAPI.Controllers
             cls.Reference = "";
             cls.Links = "";
             cls.Memo = "";
-           // cls.VersionNo = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            // cls.VersionNo = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
             cls.PaidValue = 0;
 
             string CashAccount = e.CashAccount;
@@ -908,7 +942,7 @@ namespace FinabitAPI.Controllers
             return cls;
         }
 
-        private Termins GetTermins(int EmpID,int DepartmentID)
+        private Termins GetTermins(int EmpID, int DepartmentID)
         {
             Termins t = new Termins();
             //t.ID = int.Parse(GlobalAppData.TermnID);
@@ -920,21 +954,22 @@ namespace FinabitAPI.Controllers
             {
                 t.Status = 1;
             }
-            t.CashJournalPOSID = NewCashTransaction(EmpID,DepartmentID);
+            t.CashJournalPOSID = NewCashTransaction(EmpID, DepartmentID);
             t.EmployeeID = EmpID;
             t.DepartmentID = DepartmentID;
 
-          //  t.DevicesColl = DeviceColl;
-          
+            //  t.DevicesColl = DeviceColl;
+
             return t;
         }
-        private int NewCashTransaction(int empid,int departmentid)
+
+        private int NewCashTransaction(int empid, int departmentid)
         {
             int CashJournalPOSID = 0;
-            Transactions t = GetCashTransaction(empid,departmentid);
+            Transactions t = GetCashTransaction(empid, departmentid);
             TransactionsService bllt = new TransactionsService(_dbAccess);
-            bllt.Insert(t,false);
-            if (bllt.ErrorID ==0)
+            bllt.Insert(t, false);
+            if (bllt.ErrorID == 0)
             {
                 bllt.CloseGlobalConnection();
                 CashJournalPOSID = t.ID;
@@ -958,7 +993,6 @@ namespace FinabitAPI.Controllers
             countInserted = TransactionsService.OrdersBatchInsert(ord);
             return countInserted;
         }
-
 
         private DataTable CreateTableForInsert(List<Orders_Tecmotion> cls)
         {
@@ -995,8 +1029,6 @@ namespace FinabitAPI.Controllers
                 }
             }
 
-
-
             return dt;
         }
 
@@ -1004,8 +1036,8 @@ namespace FinabitAPI.Controllers
         public DataTable CustomersList()
         {
             return GetCustomers();
-
         }
+
         private DataTable GetCustomers()
         {
             return _dbAccess.CustomersList(2, 0);
@@ -1026,41 +1058,52 @@ namespace FinabitAPI.Controllers
             var rows = ToTableRows(dt);
             return Ok(rows);
         }
-        
+
         private Employees ResolveShiftEmployee(string? reference)
         {
-            int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var e1) ? e1 : 0;
-            int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var e2) ? e2 : 0;
+            int emp1 = int.TryParse(_configuration["AppSettings:EmpNderrimi1"], out var e1)
+                ? e1
+                : 0;
+            int emp2 = int.TryParse(_configuration["AppSettings:EmpNderrimi2"], out var e2)
+                ? e2
+                : 0;
 
             // support numeric EmpID directly (besides shift "1"/"2")
-            if (!string.IsNullOrWhiteSpace(reference) &&
-                int.TryParse(reference.Trim(), out var asEmpId) &&
-                asEmpId > 0 &&
-                reference.Trim() != "1" && reference.Trim() != "2")
+            if (
+                !string.IsNullOrWhiteSpace(reference)
+                && int.TryParse(reference.Trim(), out var asEmpId)
+                && asEmpId > 0
+                && reference.Trim() != "1"
+                && reference.Trim() != "2"
+            )
             {
                 return _dalEmployee.SelectByID(new Employees { EmpID = asEmpId });
             }
 
             int pick = 0;
-            if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "1" && emp1 > 0) pick = emp1;
-            else if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "2" && emp2 > 0) pick = emp2;
-            else pick = emp1 > 0 ? emp1 : emp2;
+            if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "1" && emp1 > 0)
+                pick = emp1;
+            else if (!string.IsNullOrWhiteSpace(reference) && reference.Trim() == "2" && emp2 > 0)
+                pick = emp2;
+            else
+                pick = emp1 > 0 ? emp1 : emp2;
 
             if (pick <= 0)
-                throw new InvalidOperationException("No shift employee configured (EmpNderrimi1/2).");
+                throw new InvalidOperationException(
+                    "No shift employee configured (EmpNderrimi1/2)."
+                );
 
             return _dalEmployee.SelectByID(new Employees { EmpID = pick }); // <-- use pick, not int.Parse(reference)
         }
 
-
         private (string terminId, int cashJournalId) EnsureTerminCashHeader(
-     int departmentID,
-     string? reference,
-     int empIdOverride,
-     DateTime date,
-     string cashAccount,
-     int journalTypeId
- )
+            int departmentID,
+            string? reference,
+            int empIdOverride,
+            DateTime date,
+            string cashAccount,
+            int journalTypeId
+        )
         {
             var wantToday = date.Date == DateTime.Now.Date;
 
@@ -1075,12 +1118,17 @@ namespace FinabitAPI.Controllers
 
                 if (!string.IsNullOrEmpty(terminId) && cashJournalId > 0)
                 {
-                    var hdr = TransactionsService.SelectByID(new Transactions { ID = cashJournalId });
-                    if (hdr != null && hdr.ID > 0 &&
-                        hdr.TransactionTypeID == journalTypeId &&
-                        hdr.DepartmentID == departmentID &&
-                        (hdr.CashAccount ?? "").Trim() == (cashAccount ?? "").Trim() &&
-                        hdr.TransactionDate.Date == date.Date)
+                    var hdr = TransactionsService.SelectByID(
+                        new Transactions { ID = cashJournalId }
+                    );
+                    if (
+                        hdr != null
+                        && hdr.ID > 0
+                        && hdr.TransactionTypeID == journalTypeId
+                        && hdr.DepartmentID == departmentID
+                        && (hdr.CashAccount ?? "").Trim() == (cashAccount ?? "").Trim()
+                        && hdr.TransactionDate.Date == date.Date
+                    )
                     {
                         needNew = false;
                     }
@@ -1094,7 +1142,8 @@ namespace FinabitAPI.Controllers
 
                     var s2 = TerminsRepository.OpenedTerminID(empIdOverride, departmentID);
                     terminId = (s2 != null && s2.Length > 0) ? s2[0] : "";
-                    cashJournalId = (s2 != null && s2.Length > 1) ? CommonApp.CheckForInt(s2[1]) : 0;
+                    cashJournalId =
+                        (s2 != null && s2.Length > 1) ? CommonApp.CheckForInt(s2[1]) : 0;
                 }
 
                 GlobalAppData.TermnID = terminId;
@@ -1104,21 +1153,27 @@ namespace FinabitAPI.Controllers
 
             // === Path 2: NOT TODAY -> bypass Termin; find or create header for (date, account, dept, type) ===
             int companyID = _dalDepartment.SelectByID(departmentID).CompanyID;
-            int headerId = _dbAccess.CashJournalIDByCashAccount(cashAccount, journalTypeId, date, companyID); // make sure this overload takes 'date'
+            int headerId = _dbAccess.CashJournalIDByCashAccount(
+                cashAccount,
+                journalTypeId,
+                date,
+                companyID
+            ); // make sure this overload takes 'date'
             if (headerId == 0)
             {
-                headerId =  NewCashTransaction(empIdOverride, departmentID);
+                headerId = NewCashTransaction(empIdOverride, departmentID);
             }
 
             // we don't have a Termin for back-dated headers; return empty terminId
             return ("", headerId);
         }
 
-
         [HttpPost("FilesImport")]
         [RequestSizeLimit(1024L * 1024L * 200L)]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ContractsDocsImport([FromForm] ImportContractsDocsForm form)
+        public async Task<IActionResult> ContractsDocsImport(
+            [FromForm] ImportContractsDocsForm form
+        )
         {
             if (form.Files == null || form.Files.Count == 0)
                 return BadRequest("No files uploaded.");
@@ -1140,20 +1195,27 @@ namespace FinabitAPI.Controllers
             for (int i = 0; i < form.Files.Count; i++)
             {
                 var f = form.Files[i];
-                if (f?.Length <= 0) continue;
+                if (f?.Length <= 0)
+                    continue;
 
                 using var ms = new MemoryStream();
                 await f.CopyToAsync(ms);
                 var bytes = ms.ToArray();
 
                 var ext = Path.GetExtension(f.FileName)?.ToLowerInvariant() ?? "";
-                var desc = (form.Descriptions != null && i < form.Descriptions.Count && !string.IsNullOrWhiteSpace(form.Descriptions[i]))
-                           ? form.Descriptions[i]
-                           : f.FileName;
+                var desc =
+                    (
+                        form.Descriptions != null
+                        && i < form.Descriptions.Count
+                        && !string.IsNullOrWhiteSpace(form.Descriptions[i])
+                    )
+                        ? form.Descriptions[i]
+                        : f.FileName;
 
-                var docType = (form.DocTypes != null && i < form.DocTypes.Count)
-                              ? form.DocTypes[i]
-                              : (form.DocType ?? 0);
+                var docType =
+                    (form.DocTypes != null && i < form.DocTypes.Count)
+                        ? form.DocTypes[i]
+                        : (form.DocType ?? 0);
 
                 var row = dt.NewRow();
                 row["DossierID"] = form.DossierId;
@@ -1166,9 +1228,22 @@ namespace FinabitAPI.Controllers
             }
 
             // Call repository (no userId passed from the form; repo defaults to -1)
-            _dbAccess.ContractsDocsInsert(dt, form.ScanDocMode, form.DocNo, form.DocDate, form.SubjectName);
+            _dbAccess.ContractsDocsInsert(
+                dt,
+                form.ScanDocMode,
+                form.DocNo,
+                form.DocDate,
+                form.SubjectName
+            );
 
-            return Ok(new { inserted = dt.Rows.Count, dossierId = form.DossierId, mode = form.ScanDocMode });
+            return Ok(
+                new
+                {
+                    inserted = dt.Rows.Count,
+                    dossierId = form.DossierId,
+                    mode = form.ScanDocMode,
+                }
+            );
         }
 
         [HttpGet("DistinctLast300")]
@@ -1184,7 +1259,6 @@ namespace FinabitAPI.Controllers
                 return StatusCode(500, new { ok = false, message = ex.Message });
             }
         }
-
 
         private List<Dictionary<string, object>> ToTableRows(DataTable dt)
         {
@@ -1204,10 +1278,27 @@ namespace FinabitAPI.Controllers
             return _dbAccess.OrdersList(FromDate, ToDate);
         }
 
-
-        private Task<List<Orders>> GetTransactionsAsync(string fromDate, string toDate, int tranTypeID, string itemID = null, string itemName = null, string partnerName = null, string locationName = null, CancellationToken ct = default)
+        private Task<List<Orders>> GetTransactionsAsync(
+            string fromDate,
+            string toDate,
+            int tranTypeID,
+            string itemID = null,
+            string itemName = null,
+            string partnerName = null,
+            string locationName = null,
+            CancellationToken ct = default
+        )
         {
-            return _dbAccess.GetTransactions(fromDate, toDate, tranTypeID, itemID, itemName, partnerName, locationName, ct);
+            return _dbAccess.GetTransactions(
+                fromDate,
+                toDate,
+                tranTypeID,
+                itemID,
+                itemName,
+                partnerName,
+                locationName,
+                ct
+            );
         }
 
         private Transactions GetTransaction(XMLTransactions t)
@@ -1222,11 +1313,9 @@ namespace FinabitAPI.Controllers
 
             //Users u = new Users();
 
-
             //u.ID = t.InsBy;
             //u = BLLUsers.SelectByID(u);
             DataTable SDTable = _dbAccess.ListSystemDataTable();
-
 
             bool GenerateTranNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
             //if (!GenerateTranNo)
@@ -1259,7 +1348,6 @@ namespace FinabitAPI.Controllers
                 cls.ItemID = t.AssetID.ToString();
                 cls.Memo = t.TransactionNo;
                 t.TransactionNo = "";
-
             }
             else
             {
@@ -1301,13 +1389,12 @@ namespace FinabitAPI.Controllers
                 cls.CashAccount = t.CashAccount; // perkohesisht e lun rolin e CashAccount per banke
                 if (GenerateTranNo || t.TransactionNo == "")
                 {
-                    cls.TransactionNo = DateTime.Now.ToString("ddMMyyy_HH") + " - " + dep.DepartmentName;
+                    cls.TransactionNo =
+                        DateTime.Now.ToString("ddMMyyy_HH") + " - " + dep.DepartmentName;
                 }
                 else
                 {
                     cls.TransactionNo = t.TransactionNo;
-
-
                 }
             }
             //}
@@ -1315,9 +1402,9 @@ namespace FinabitAPI.Controllers
             //{
             if (GenerateTranNo || t.TransactionNo == "" || t.TransactionNo == null)
             {
-
-                cls.TransactionNo = _dbAccess.GetTransactionNo(t.TransactionType, t.TransactionDate, t.DepartmentID).ToString();
-
+                cls.TransactionNo = _dbAccess
+                    .GetTransactionNo(t.TransactionType, t.TransactionDate, t.DepartmentID)
+                    .ToString();
             }
             else
             {
@@ -1328,9 +1415,9 @@ namespace FinabitAPI.Controllers
             cls.PDAInsDate = t.TransactionDate;
             if (t.InvoiceNo == "" || t.InvoiceNo == null)
             {
-
-                cls.InvoiceNo = _dbAccess.GetTransactionNo(t.TransactionType, t.TransactionDate, t.DepartmentID).ToString();
-
+                cls.InvoiceNo = _dbAccess
+                    .GetTransactionNo(t.TransactionType, t.TransactionDate, t.DepartmentID)
+                    .ToString();
             }
             else
             {
@@ -1359,7 +1446,6 @@ namespace FinabitAPI.Controllers
 
             //Users_GetLoginUserByPIN("_2");
 
-
             decimal[] Totals = GetRowsTotalValue(cls.TranDetailsColl);
             cls.RABAT = Totals[2];
             cls.Value = Totals[0];
@@ -1373,7 +1459,7 @@ namespace FinabitAPI.Controllers
             {
                 try
                 {
-                    cls.InternalDepartmentID = Convert.ToInt32(Math.Truncate(t.PaymentValue));// Convert.ToInt32(t.PaymentValue.ToString());
+                    cls.InternalDepartmentID = Convert.ToInt32(Math.Truncate(t.PaymentValue)); // Convert.ToInt32(t.PaymentValue.ToString());
                 }
                 catch { }
             }
@@ -1382,7 +1468,6 @@ namespace FinabitAPI.Controllers
             {
                 cls.InternalDepartmentID = t.DepartmentID;
             }
-
 
             //if (cls.TransactionTypeID == 25)
             //{
@@ -1394,14 +1479,12 @@ namespace FinabitAPI.Controllers
             //    }
             //    cls.CashAccount = CashAccount;
             //}
-            cls.EmpID = 0;// e.ID;
+            cls.EmpID = 0; // e.ID;
             cls.CompanyID = dep.CompanyID;
             cls.JournalStatus = false;
             cls.Longitude = t.Longitude;
             cls.Latitude = t.Latitude;
             cls.BL = t.BL;
-
-
 
             cls.ServiceType = t.ServiceTypeID;
 
@@ -1411,65 +1494,96 @@ namespace FinabitAPI.Controllers
         }
 
         private Task<List<TransactionAggregate>> GetTransactionsAggregateAsync(
-    string fromDate, string toDate, int tranTypeID,
-    string itemID = null, string itemName = null, string partnerName = null,
-    string departmentName = null,
-    bool isMonthly = false,                                 // <-- NEW
-    CancellationToken ct = default)
+            string fromDate,
+            string toDate,
+            int tranTypeID,
+            string itemID = null,
+            string itemName = null,
+            string partnerName = null,
+            string departmentName = null,
+            bool isMonthly = false, // <-- NEW
+            CancellationToken ct = default
+        )
         {
             return _dbAccess.GetTransactionsAggregate(
-                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName,
-                isMonthly,                                           // <-- pass it down
-                ct);
+                fromDate,
+                toDate,
+                tranTypeID,
+                itemID,
+                itemName,
+                partnerName,
+                departmentName,
+                isMonthly, // <-- pass it down
+                ct
+            );
         }
 
         [HttpGet("TransactionsAggregate")]
         public async Task<IActionResult> GetAggregate(
-          [FromQuery] string fromDate,
-          [FromQuery] string toDate,
-          [FromQuery] int tranTypeID,
-          [FromQuery] string itemID = null,
-          [FromQuery] string itemName = null,
-          [FromQuery] string partnerName = null,
-          [FromQuery] string departmentName = null,
-          [FromQuery] bool isMonthly = false,                    // <-- NEW
-          CancellationToken ct = default)
+            [FromQuery] string fromDate,
+            [FromQuery] string toDate,
+            [FromQuery] int tranTypeID,
+            [FromQuery] string itemID = null,
+            [FromQuery] string itemName = null,
+            [FromQuery] string partnerName = null,
+            [FromQuery] string departmentName = null,
+            [FromQuery] bool isMonthly = false, // <-- NEW
+            CancellationToken ct = default
+        )
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest("fromDate and toDate are required.");
 
             var data = await GetTransactionsAggregateAsync(
-                fromDate, toDate, tranTypeID, itemID, itemName, partnerName, departmentName,
-                isMonthly,                                          // <-- pass it
-                ct);
+                fromDate,
+                toDate,
+                tranTypeID,
+                itemID,
+                itemName,
+                partnerName,
+                departmentName,
+                isMonthly, // <-- pass it
+                ct
+            );
 
             return Ok(data);
         }
 
         [HttpGet("TransactionsWithDetails")]
-        public async Task<IActionResult> GetTransactionWithDetails([FromQuery] int transactionId, CancellationToken ct = default)
+        public async Task<IActionResult> GetTransactionWithDetails(
+            [FromQuery] int transactionId,
+            CancellationToken ct = default
+        )
         {
-            if (transactionId <= 0) return BadRequest("Invalid transaction ID.");
+            if (transactionId <= 0)
+                return BadRequest("Invalid transaction ID.");
 
-            var dto = await _dbAccess.GetTransactionWithDetails(transactionId, ct); 
-            if (dto == null) return NotFound($"Transaction {transactionId} not found.");
+            var dto = await _dbAccess.GetTransactionWithDetails(transactionId, ct);
+            if (dto == null)
+                return NotFound($"Transaction {transactionId} not found.");
 
             return Ok(dto);
         }
 
-
         [HttpGet("IncomeStatement")]
         public async Task<IActionResult> GetIncomeStatement(
-     [FromQuery] string fromDate,
-     [FromQuery] string toDate,
-     [FromQuery] bool isMonthly = false,             // NEW
-     [FromQuery] string filter = "",                 // NEW
-     CancellationToken ct = default)
+            [FromQuery] string fromDate,
+            [FromQuery] string toDate,
+            [FromQuery] bool isMonthly = false, // NEW
+            [FromQuery] string filter = "", // NEW
+            CancellationToken ct = default
+        )
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest("fromDate and toDate are required.");
 
-            var data = await _dbAccess.GetIncomeStatementAsync(fromDate, toDate, isMonthly, filter, ct);
+            var data = await _dbAccess.GetIncomeStatementAsync(
+                fromDate,
+                toDate,
+                isMonthly,
+                filter,
+                ct
+            );
             return Ok(data);
         }
 
@@ -1481,6 +1595,7 @@ namespace FinabitAPI.Controllers
             OptionsRepository optionsRepository = new OptionsRepository(_dbAccess);
             optionsRepository.GetOptions();
         }
+
         private List<TransactionsDetails> GetTranDetails(XMLTransactions t)
         {
             ItemsLookup Item = new ItemsLookup();
@@ -1493,7 +1608,7 @@ namespace FinabitAPI.Controllers
             {
                 try
                 {
-                    ItemList = _dbAccess.GetItemsForPOS(0, t.DepartmentID);  // Me ndrru logjiken 
+                    ItemList = _dbAccess.GetItemsForPOS(0, t.DepartmentID); // Me ndrru logjiken
                 }
                 catch { }
             }
@@ -1505,29 +1620,29 @@ namespace FinabitAPI.Controllers
                 try
                 {
                     //Users_GetLoginUserByPIN("Item Name para :" + row.ItemName);
-                    Item = (from i in ItemList
-                            where i.ItemID == row.ItemID
-                            select i).FirstOrDefault<ItemsLookup>();
+                    Item = (
+                        from i in ItemList
+                        where i.ItemID == row.ItemID
+                        select i
+                    ).FirstOrDefault<ItemsLookup>();
                     VatValue = Item.VATValue;
                 }
-                catch
-                {
+                catch { }
 
-                }
-
-                if(Item == null || String.IsNullOrEmpty(Item.ItemID))
+                if (Item == null || String.IsNullOrEmpty(Item.ItemID))
                 {
                     try
                     {
-                        Item = (from i in ItemList
-                             where i.ItemName.ToLower().Equals(row.ItemName.ToLower())
-                               select i
-                               ).FirstOrDefault<ItemsLookup>();
+                        Item = (
+                            from i in ItemList
+                            where i.ItemName.ToLower().Equals(row.ItemName.ToLower())
+                            select i
+                        ).FirstOrDefault<ItemsLookup>();
                     }
                     catch { }
                 }
 
-                if(Item == null || String.IsNullOrEmpty(Item.ItemID))
+                if (Item == null || String.IsNullOrEmpty(Item.ItemID))
                 {
                     continue;
                 }
@@ -1546,7 +1661,8 @@ namespace FinabitAPI.Controllers
                 if (t.TransactionType == 36)
                 {
                     clsDet.LocationID = Convert.ToInt32(row.Value);
-                    clsDet.Contracts = row.Rabat.ToString(); ;
+                    clsDet.Contracts = row.Rabat.ToString();
+                    ;
                 }
                 else
                 {
@@ -1556,7 +1672,7 @@ namespace FinabitAPI.Controllers
                 clsDet.TransactionID = t.ID;
                 if (t.TransactionType != 42)
                 {
-                    clsDet.DetailsType = 1;// menaxhohet ndryshe per pagesa!!!
+                    clsDet.DetailsType = 1; // menaxhohet ndryshe per pagesa!!!
                 }
                 else
                 {
@@ -1569,7 +1685,7 @@ namespace FinabitAPI.Controllers
                 if (t.TransactionType != 36)
                 {
                     clsDet.Quantity = row.Quantity;
-                    clsDet.Price = 0;//(row.Price * 100) / (100 + vpc.VATPercents);
+                    clsDet.Price = 0; //(row.Price * 100) / (100 + vpc.VATPercents);
                 }
                 else
                 {
@@ -1577,24 +1693,41 @@ namespace FinabitAPI.Controllers
                     clsDet.Price = row.Price;
                 }
 
-
                 //VATPercent vpc = new VATPercent();
                 //vpc.VATID = t.VATPrecentID;
                 //vpc = BLLVATPercent.SelectByID(vpc);
 
-                clsDet.CostPrice = (row.Price * 100) / (100 + VatValue);//vpc.VATPercents);
-                clsDet.Value = (((row.Price * (1.0M - row.Rabat / 100.0M) * (1.0M - row.Rabat2 / 100.0M)) * 100) / (100 + VatValue)) * clsDet.Quantity;  //row.Price * row.Quantity;1.
+                clsDet.CostPrice = (row.Price * 100) / (100 + VatValue); //vpc.VATPercents);
+                clsDet.Value =
+                    (
+                        (
+                            (row.Price * (1.0M - row.Rabat / 100.0M) * (1.0M - row.Rabat2 / 100.0M))
+                            * 100
+                        ) / (100 + VatValue)
+                    ) * clsDet.Quantity; //row.Price * row.Quantity;1.
                 clsDet.ProjectID = 0;
                 clsDet.Mode = 1;
                 clsDet.Discount = row.Rabat;
                 clsDet.Discount2 = row.Rabat2;
                 clsDet.Discount3 = row.Rabat3;
-                clsDet.PriceWithDiscount = ((row.Price * (1.0M - row.Rabat / 100.0M) * (1.0M - row.Rabat2 / 100.0M) * (1.0M - row.Rabat3 / 100.0M)) * 100) / (100 + VatValue);
+                clsDet.PriceWithDiscount =
+                    (
+                        (
+                            row.Price
+                            * (1.0M - row.Rabat / 100.0M)
+                            * (1.0M - row.Rabat2 / 100.0M)
+                            * (1.0M - row.Rabat3 / 100.0M)
+                        ) * 100
+                    ) / (100 + VatValue);
                 if (t.TransactionType == 42)
                 {
                     clsDet.Price = clsDet.PriceWithDiscount;
                 }
-                clsDet.VATPrice = row.Price * (1.0M - row.Rabat / 100.0M) * (1.0M - row.Rabat2 / 100.0M) * (1.0M - row.Rabat3 / 100.0M);
+                clsDet.VATPrice =
+                    row.Price
+                    * (1.0M - row.Rabat / 100.0M)
+                    * (1.0M - row.Rabat2 / 100.0M)
+                    * (1.0M - row.Rabat3 / 100.0M);
                 if (t.TransactionType != 42)
                 {
                     clsDet.SalesPrice = (row.Price * 100) / (100 + VatValue);
@@ -1619,8 +1752,6 @@ namespace FinabitAPI.Controllers
             return tranDetails;
         }
 
-
-
         //private decimal[] GetRowsTotalValue(List<TransactionsDetails> list)
         //{
         //    decimal[] decValue = new decimal[6];
@@ -1628,7 +1759,7 @@ namespace FinabitAPI.Controllers
         //    decimal PriceWithRabat = 0;
         //    decimal Transport = 0;
         //    decimal Quantity = 0;
-          
+
         //    foreach (var row in list)
         //    {
         //        int DetailsType = CommonApp.CheckForInt(row.DetailsType.Value.ToString());
@@ -1641,7 +1772,6 @@ namespace FinabitAPI.Controllers
         //            Transport = CommonApp.CheckForDecimal(row.Transport.ToString()); // /Quantity;
 
         //            decimal Koeficienti = CommonApp.CheckForDecimal(row.Coefficient.Value.ToString());
-
 
         //            decValue[4] += CommonApp.CheckForDecimal(row.AkcizaValue.ToString()) * CommonApp.CheckForDecimal(row.Quantity.ToString()) * Koeficienti;
         //            decValue[0] += CommonApp.CheckForDecimal(row.Value.ToString()); //Value
@@ -1657,7 +1787,6 @@ namespace FinabitAPI.Controllers
         //        }
         //    }
 
-
         //    return decValue;
         //}
         private List<TransactionsDetails> GetTranDetails(Transactions t)
@@ -1672,7 +1801,7 @@ namespace FinabitAPI.Controllers
             {
                 try
                 {
-                    ItemList = _dbAccess.GetItemsForPOS(0, t.DepartmentID);  // Me ndrru logjiken 
+                    ItemList = _dbAccess.GetItemsForPOS(0, t.DepartmentID); // Me ndrru logjiken
                 }
                 catch { }
             }
@@ -1684,24 +1813,24 @@ namespace FinabitAPI.Controllers
                 try
                 {
                     //Users_GetLoginUserByPIN("Item Name para :" + row.ItemName);
-                    Item = (from i in ItemList
-                            where i.ItemID == row.ItemID
-                            select i).FirstOrDefault<ItemsLookup>();
+                    Item = (
+                        from i in ItemList
+                        where i.ItemID == row.ItemID
+                        select i
+                    ).FirstOrDefault<ItemsLookup>();
                     VatValue = Item.VATValue;
                 }
-                catch
-                {
-
-                }
+                catch { }
 
                 if (Item == null || String.IsNullOrEmpty(Item.ItemID))
                 {
                     try
                     {
-                        Item = (from i in ItemList
-                                where i.ItemName.ToLower().Equals(row.ItemName.ToLower())
-                                select i
-                               ).FirstOrDefault<ItemsLookup>();
+                        Item = (
+                            from i in ItemList
+                            where i.ItemName.ToLower().Equals(row.ItemName.ToLower())
+                            select i
+                        ).FirstOrDefault<ItemsLookup>();
                     }
                     catch { }
                 }
@@ -1725,7 +1854,8 @@ namespace FinabitAPI.Controllers
                 if (t.TransactionTypeID == 36)
                 {
                     clsDet.LocationID = Convert.ToInt32(row.Value);
-                    clsDet.Contracts = row.Discount.ToString(); ;
+                    clsDet.Contracts = row.Discount.ToString();
+                    ;
                 }
                 else
                 {
@@ -1735,7 +1865,7 @@ namespace FinabitAPI.Controllers
                 clsDet.TransactionID = t.ID;
                 if (t.TransactionTypeID != 42)
                 {
-                    clsDet.DetailsType = 1;// menaxhohet ndryshe per pagesa!!!
+                    clsDet.DetailsType = 1; // menaxhohet ndryshe per pagesa!!!
                 }
                 else
                 {
@@ -1748,7 +1878,7 @@ namespace FinabitAPI.Controllers
                 if (t.TransactionTypeID != 36)
                 {
                     clsDet.Quantity = row.Quantity;
-                    clsDet.Price = 0;//(row.Price * 100) / (100 + vpc.VATPercents);
+                    clsDet.Price = 0; //(row.Price * 100) / (100 + vpc.VATPercents);
                 }
                 else
                 {
@@ -1756,24 +1886,44 @@ namespace FinabitAPI.Controllers
                     clsDet.Price = row.Price;
                 }
 
-
                 //VATPercent vpc = new VATPercent();
                 //vpc.VATID = t.VATPrecentID;
                 //vpc = BLLVATPercent.SelectByID(vpc);
 
                 //clsDet.CostPrice = (row.Price * 100) / (100 + VatValue);//vpc.VATPercents);
-                clsDet.Value = (((row.Price * (1.0M - row.Discount / 100.0M) * (1.0M - row.Discount2 / 100.0M)) * 100) / (100 + VatValue)) * clsDet.Quantity;  //row.Price * row.Quantity;1.
+                clsDet.Value =
+                    (
+                        (
+                            (
+                                row.Price
+                                * (1.0M - row.Discount / 100.0M)
+                                * (1.0M - row.Discount2 / 100.0M)
+                            ) * 100
+                        ) / (100 + VatValue)
+                    ) * clsDet.Quantity; //row.Price * row.Quantity;1.
                 clsDet.ProjectID = 0;
                 clsDet.Mode = 1;
                 clsDet.Discount = row.Discount;
                 clsDet.Discount2 = row.Discount2;
                 clsDet.Discount3 = row.Discount3;
-                clsDet.PriceWithDiscount = ((row.Price * (1.0M - row.Discount / 100.0M) * (1.0M - row.Discount / 100.0M) * (1.0M - row.Discount / 100.0M)) * 100) / (100 + VatValue);
+                clsDet.PriceWithDiscount =
+                    (
+                        (
+                            row.Price
+                            * (1.0M - row.Discount / 100.0M)
+                            * (1.0M - row.Discount / 100.0M)
+                            * (1.0M - row.Discount / 100.0M)
+                        ) * 100
+                    ) / (100 + VatValue);
                 if (t.TransactionTypeID == 42)
                 {
                     clsDet.Price = clsDet.PriceWithDiscount;
                 }
-                clsDet.VATPrice = row.Price * (1.0M - row.Discount / 100.0M) * (1.0M - row.Discount2 / 100.0M) * (1.0M - row.Discount3 / 100.0M);
+                clsDet.VATPrice =
+                    row.Price
+                    * (1.0M - row.Discount / 100.0M)
+                    * (1.0M - row.Discount2 / 100.0M)
+                    * (1.0M - row.Discount3 / 100.0M);
                 if (t.TransactionTypeID != 42)
                 {
                     clsDet.SalesPrice = (row.Price * 100) / (100 + VatValue);
@@ -1803,10 +1953,9 @@ namespace FinabitAPI.Controllers
             decimal[] decValue = new decimal[4];
             foreach (TransactionsDetails row in Details)
             {
-                decValue[0] += row.PriceWithDiscount * row.Quantity;//Value
+                decValue[0] += row.PriceWithDiscount * row.Quantity; //Value
                 decValue[1] += (row.VATPrice - row.PriceWithDiscount) * row.Quantity; //VATValue
                 decValue[2] += (row.SalesPrice - row.PriceWithDiscount) * row.Quantity;
-
             }
             return decValue;
         }
@@ -1821,11 +1970,15 @@ namespace FinabitAPI.Controllers
             Dep.ID = DepartmentID;
             Dep = _dbAccess.SelectDepartmentByID(Dep);
 
-            int BankJournalID = _dbAccess.CashJournalIDByCashAccount(cashaccount, 24, DateTime.Now, Dep.CompanyID);
+            int BankJournalID = _dbAccess.CashJournalIDByCashAccount(
+                cashaccount,
+                24,
+                DateTime.Now,
+                Dep.CompanyID
+            );
 
             if (BankJournalID == 0)
             {
-
                 Transactions t = GetBankTransactionForJournal(cashaccount, Dep.CompanyID);
                 TransactionsService bllt = new TransactionsService(_dbAccess);
                 try
@@ -1878,7 +2031,7 @@ namespace FinabitAPI.Controllers
             cls.CompanyID = CompanyID;
             return cls;
         }
-       
+
         [HttpGet("GetItemStateForOneItem")]
         public ActionResult<List<ItemState>> GetItemStateForOneItem([FromQuery] string ItemID)
         {
@@ -1906,10 +2059,8 @@ namespace FinabitAPI.Controllers
                 sw.WriteLine(DateTime.Now.ToString() + "**** " + log + "****");
                 sw.Close();
             }
-
-
-
         }
+
         string NewFLinkVersion = "0";
         #region RaportetExtreamPica
         //public void PrintFiscalInvoice(int TransactionID, string Pathi, string UserNam, bool isOrder, string Barcode)
@@ -1979,14 +2130,12 @@ namespace FinabitAPI.Controllers
 
         //            }
 
-
         //            if (NewFLinkVersion == "0")
         //            {
         //                lines = "L,1,______,_,__;SetOperator;1;" + UserName + ";0000;0000" + "\r\n";
         //            }
 
         //            int i = 1;
-
 
         //            foreach (DataRow det in TranDet.Rows)
         //            {
@@ -1997,12 +2146,10 @@ namespace FinabitAPI.Controllers
         //                catch (Exception)
         //                {
 
-
         //                }
         //                TotalValueDatex += decimal.Round(CheckForDecimal(det["VATPrice"].ToString())
         //                                            * CheckForDecimal(det["Quantity"].ToString())
         //                    , 2, MidpointRounding.AwayFromZero);
-
 
         //                lines += "S,1,______,_,__;" + det["ItemName"];// Emertim
 
@@ -2015,8 +2162,6 @@ namespace FinabitAPI.Controllers
         //                lines += det["DatexGroup"].ToString();
 
         //                DateForItem = DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString();
-
-
 
         //                lines += ";0;" + i + DateForItem + det["ItemID"];
 
@@ -2159,7 +2304,6 @@ namespace FinabitAPI.Controllers
         }
 
         [HttpPost("UpdateIsPrintFiscalInvoice")]
-
         public void UpdateIsPrintFiscalInvoice(int TransactionID)
         {
             TransactionsService.UpdateIsPrintFiscalInvoiceAsTrueByTranID(TransactionID);
@@ -2179,8 +2323,6 @@ namespace FinabitAPI.Controllers
 
             return Ok(transaction);
         }
-
-
 
         #region RaportetExtreamPica
         //public void PrintFiscalInvoice_GLOBAL(DataTable TranDet, string Pathi, string UserName, string Barcode, string TableName)
@@ -2232,7 +2374,6 @@ namespace FinabitAPI.Controllers
         //        return;
         //    }
 
-
         //    //hapja fatures
         //    try
         //    {
@@ -2247,7 +2388,6 @@ namespace FinabitAPI.Controllers
         //        return;
         //    }
 
-
         //    decimal TotalValueBanks = 0;
         //    decimal TotalValueCash = 0;
 
@@ -2258,7 +2398,6 @@ namespace FinabitAPI.Controllers
         //    //    TotalValueBanks += CommonApp.CheckForDecimal(strPayments[j]);
         //    //}
         //    //PayValue = (TotalValueCash + TotalValueBanks).ToString("N2");
-
 
         //    {
         //        string lines = "";  // = "1;";
@@ -2340,7 +2479,6 @@ namespace FinabitAPI.Controllers
 
         //            //lines += "&5" + (char)9 + "P" + string.Format("{0:F}", TotalValueCash) + "\r\n";
 
-
         //        }
         //        else
         //        {
@@ -2374,11 +2512,7 @@ namespace FinabitAPI.Controllers
 
         //        return;
 
-
-
-
         //    }
-
 
         //}
         #endregion
@@ -2461,7 +2595,6 @@ namespace FinabitAPI.Controllers
 //        return translatedText;
 //    }
 
-
 //    private static string ReplaceCharacters(string text)
 //    {
 
@@ -2479,11 +2612,6 @@ namespace FinabitAPI.Controllers
 
 //        return text;
 //    }
-
-
-
-
-
 
 //}
 #endregion

@@ -12,9 +12,13 @@ namespace FinabitAPI.Finabit.Items
     {
         private readonly DBAccess _dbAccess;
         private readonly ItemsMasterImportRepository _importRepo;
-        private readonly ItemRepository _itemRepository; 
+        private readonly ItemRepository _itemRepository;
 
-        public ItemsManagementController(DBAccess dbAccess, ItemRepository itemRepository, ItemsMasterImportRepository importRepo) 
+        public ItemsManagementController(
+            DBAccess dbAccess,
+            ItemRepository itemRepository,
+            ItemsMasterImportRepository importRepo
+        )
         {
             _dbAccess = dbAccess;
             _itemRepository = itemRepository;
@@ -24,7 +28,11 @@ namespace FinabitAPI.Finabit.Items
         [HttpPost("CreateNewItem")]
         public ActionResult<CreateItemResponse> CreateNewItem([FromBody] CreateItemRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.ItemID) || string.IsNullOrWhiteSpace(request.ItemName))
+            if (
+                request == null
+                || string.IsNullOrWhiteSpace(request.ItemID)
+                || string.IsNullOrWhiteSpace(request.ItemName)
+            )
             {
                 return BadRequest("ItemID and ItemName are required");
             }
@@ -32,25 +40,30 @@ namespace FinabitAPI.Finabit.Items
             {
                 ItemID = request.ItemID,
                 ErrorID = 0,
-                ErrorDescription = string.Empty
+                ErrorDescription = string.Empty,
             };
             return Created($"api/ItemsManagement/{request.ItemID}", response);
         }
 
         [HttpPost("ImportItemsMaster")]
         public async Task<ActionResult<ImportItemsMasterResponse>> ImportItemsMaster(
-    [FromBody] ImportItemsMasterRequest request, [FromQuery] int newTransactionId)
+            [FromBody] ImportItemsMasterRequest request,
+            [FromQuery] int newTransactionId
+        )
         {
             if (request?.Items == null || request.Items.Count == 0)
                 return BadRequest("Items payload required");
 
-            var (inserted, error, items) = await _importRepo.ImportItemsAsync(request.Items, newTransactionId);
+            var (inserted, error, items) = await _importRepo.ImportItemsAsync(
+                request.Items,
+                newTransactionId
+            );
 
             var resp = new ImportItemsMasterResponse
             {
                 Inserted = inserted,
                 Error = error,
-                InsertedItems = items    // <-- full rows returned by SQL
+                InsertedItems = items, // <-- full rows returned by SQL
             };
 
             if (!string.IsNullOrEmpty(error))
@@ -59,60 +72,77 @@ namespace FinabitAPI.Finabit.Items
             return Ok(resp);
         }
 
-        [HttpGet("PosItems")] 
-        public ActionResult<List<ItemsLookup>> GetPosItems([FromQuery] int departmentId, [FromQuery] int priceMenuId = 0)
+        [HttpGet("PosItems")]
+        public ActionResult<List<ItemsLookup>> GetPosItems(
+            [FromQuery] int departmentId,
+            [FromQuery] int priceMenuId = 0
+        )
         {
             var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId);
             return Ok(list);
         }
 
         [HttpGet("{itemId}")]
-        public ActionResult<ItemsLookup> GetItem(string itemId, [FromQuery] int departmentId, [FromQuery] int priceMenuId = 0)
+        public ActionResult<ItemsLookup> GetItem(
+            string itemId,
+            [FromQuery] int departmentId,
+            [FromQuery] int priceMenuId = 0
+        )
         {
-            var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
+            var list =
+                _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
             var item = list.FirstOrDefault(i => i.ItemID == itemId);
-            if (item == null) return NotFound();
+            if (item == null)
+                return NotFound();
             return Ok(item);
         }
 
         [HttpGet("exists")]
         public ActionResult<ItemExistenceResponse> Exists(
-    [FromQuery] int departmentId,
-    [FromQuery] string itemId = null,
-    [FromQuery] string name = null,
-    [FromQuery] string barcode = null,
-    [FromQuery] bool returnDetails = true)
+            [FromQuery] int departmentId,
+            [FromQuery] string itemId = null,
+            [FromQuery] string name = null,
+            [FromQuery] string barcode = null,
+            [FromQuery] bool returnDetails = true
+        )
         {
-            if (departmentId <= 0) return BadRequest("departmentId required");
-            if (string.IsNullOrWhiteSpace(itemId) &&
-                string.IsNullOrWhiteSpace(name) &&
-                string.IsNullOrWhiteSpace(barcode))
+            if (departmentId <= 0)
+                return BadRequest("departmentId required");
+            if (
+                string.IsNullOrWhiteSpace(itemId)
+                && string.IsNullOrWhiteSpace(name)
+                && string.IsNullOrWhiteSpace(barcode)
+            )
                 return BadRequest("Provide at least one of itemId, name or barcode");
 
             if (!returnDetails)
             {
                 int foundId = _dbAccess.ItemsAdvancedExists(departmentId, itemId, name, barcode);
-                return Ok(new ItemExistenceResponse
-                {
-                    Exists = foundId > 0,
-                    ItemID = itemId,
-                    Name = name,
-                    Barcode = barcode,
-                    FoundID = foundId
-                });
+                return Ok(
+                    new ItemExistenceResponse
+                    {
+                        Exists = foundId > 0,
+                        ItemID = itemId,
+                        Name = name,
+                        Barcode = barcode,
+                        FoundID = foundId,
+                    }
+                );
             }
             else
             {
                 var det = _dbAccess.ItemsAdvancedFind(departmentId, itemId, name, barcode);
-                return Ok(new ItemExistenceResponse
-                {
-                    Exists = det != null && det.ID > 0,
-                    ItemID = itemId,
-                    Name = name,
-                    Barcode = barcode,
-                    FoundID = det?.ID ?? 0,
-                    Details = det
-                });
+                return Ok(
+                    new ItemExistenceResponse
+                    {
+                        Exists = det != null && det.ID > 0,
+                        ItemID = itemId,
+                        Name = name,
+                        Barcode = barcode,
+                        FoundID = det?.ID ?? 0,
+                        Details = det,
+                    }
+                );
             }
         }
 
@@ -121,20 +151,32 @@ namespace FinabitAPI.Finabit.Items
             [FromQuery] int departmentId,
             [FromBody] List<ItemExistenceProbe> items,
             [FromQuery] bool returnDetails = true,
-            CancellationToken ct = default)
+            CancellationToken ct = default
+        )
         {
-            if (departmentId <= 0) return BadRequest("departmentId required");
-            if (items == null || items.Count == 0) return BadRequest("Items required");
+            if (departmentId <= 0)
+                return BadRequest("departmentId required");
+            if (items == null || items.Count == 0)
+                return BadRequest("Items required");
 
             foreach (var it in items)
             {
-                if (string.IsNullOrWhiteSpace(it.ItemID) &&
-                    string.IsNullOrWhiteSpace(it.Name) &&
-                    string.IsNullOrWhiteSpace(it.Barcode))
-                    return BadRequest($"Row Index {it.Index}: provide at least one of itemId, name or barcode.");
+                if (
+                    string.IsNullOrWhiteSpace(it.ItemID)
+                    && string.IsNullOrWhiteSpace(it.Name)
+                    && string.IsNullOrWhiteSpace(it.Barcode)
+                )
+                    return BadRequest(
+                        $"Row Index {it.Index}: provide at least one of itemId, name or barcode."
+                    );
             }
 
-            var res = await _dbAccess.ItemsAdvancedExistsBatchAsync(departmentId, items, returnDetails, ct);
+            var res = await _dbAccess.ItemsAdvancedExistsBatchAsync(
+                departmentId,
+                items,
+                returnDetails,
+                ct
+            );
             return Ok(res);
         }
 
@@ -147,13 +189,18 @@ namespace FinabitAPI.Finabit.Items
             [FromQuery] string itemGroup = null,
             [FromQuery] bool? active = null,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 50)
+            [FromQuery] int pageSize = 50
+        )
         {
-            if (departmentId <= 0) return BadRequest("departmentId is required");
-            if (pageNumber <= 0) pageNumber = 1;
-            if (pageSize <= 0 || pageSize > 500) pageSize = 50;
+            if (departmentId <= 0)
+                return BadRequest("departmentId is required");
+            if (pageNumber <= 0)
+                pageNumber = 1;
+            if (pageSize <= 0 || pageSize > 500)
+                pageSize = 50;
 
-            var list = _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
+            var list =
+                _dbAccess.GetItemsForPOS(priceMenuId, departmentId) ?? new List<ItemsLookup>();
             var query = list.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(itemName))
@@ -184,7 +231,7 @@ namespace FinabitAPI.Finabit.Items
                 PageSize = pageSize,
                 TotalCount = total,
                 TotalPages = (int)Math.Ceiling(total / (double)pageSize),
-                Items = items
+                Items = items,
             };
             return Ok(result);
         }
@@ -192,7 +239,8 @@ namespace FinabitAPI.Finabit.Items
         [HttpGet("searchItem")]
         public async Task<ActionResult<IReadOnlyList<DistinctItemNameDto>>> GetDistinctNames(
             [FromQuery] string itemId = "",
-            [FromQuery] string itemName = "")
+            [FromQuery] string itemName = ""
+        )
         {
             var data = await _dbAccess.GetDistinctItemNamesAsync(itemId, itemName);
             return Ok(data);
@@ -200,8 +248,9 @@ namespace FinabitAPI.Finabit.Items
 
         [HttpPost("searchItemsBatch")]
         public async Task<ActionResult<IReadOnlyList<DistinctItemProbeResult>>> SearchItemsBatch(
-     [FromBody] IReadOnlyList<DistinctItemProbe> probes,
-     CancellationToken cancellationToken)
+            [FromBody] IReadOnlyList<DistinctItemProbe> probes,
+            CancellationToken cancellationToken
+        )
         {
             if (probes == null || probes.Count == 0)
                 return Ok(Array.Empty<DistinctItemProbeResult>());
@@ -215,7 +264,11 @@ namespace FinabitAPI.Finabit.Items
                 try
                 {
                     var results = await _dbAccess
-                        .GetDistinctItemNamesAsync(p.ItemId ?? "", p.ItemName ?? "", cancellationToken)
+                        .GetDistinctItemNamesAsync(
+                            p.ItemId ?? "",
+                            p.ItemName ?? "",
+                            cancellationToken
+                        )
                         .ConfigureAwait(false);
 
                     return new DistinctItemProbeResult
@@ -223,7 +276,7 @@ namespace FinabitAPI.Finabit.Items
                         Index = p.Index,
                         ItemId = p.ItemId,
                         ItemName = p.ItemName,
-                        Results = results
+                        Results = results,
                     };
                 }
                 catch
@@ -233,7 +286,7 @@ namespace FinabitAPI.Finabit.Items
                         Index = p.Index,
                         ItemId = p.ItemId,
                         ItemName = p.ItemName,
-                        Results = Array.Empty<DistinctItemNameDto>()
+                        Results = Array.Empty<DistinctItemNameDto>(),
                     };
                 }
                 finally
@@ -250,5 +303,18 @@ namespace FinabitAPI.Finabit.Items
             return Ok(ordered);
         }
 
+        [HttpGet("lastDistinctItems")]
+        public async Task<ActionResult<IReadOnlyList<DistinctItemNameDto>>> GetLastDistinctItems(
+            [FromQuery] int limit = 400,
+            CancellationToken cancellationToken = default
+        )
+        {
+            limit = Math.Clamp(limit, 1, 2000);
+
+            var rows = await _dbAccess
+                .GetLastDistinctItemNamesAsync(limit, cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(rows);
+        }
     }
 }

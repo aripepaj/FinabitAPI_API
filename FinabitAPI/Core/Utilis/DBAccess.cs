@@ -1,11 +1,11 @@
-﻿using FinabitAPI.Core.Global.dto;
+﻿using System.Data;
+using FinabitAPI.Core.Global.dto;
 using FinabitAPI.Core.Multitenancy;
 using FinabitAPI.Core.Security;
 using FinabitAPI.Finabit.Item.dto;
 using FinabitAPI.Finabit.Items.dto;
 using FinabitAPI.Finabit.Transaction.dto;
 using Microsoft.Data.SqlClient;
-using System.Data;
 
 namespace FinabitAPI.Utilis
 {
@@ -23,7 +23,7 @@ namespace FinabitAPI.Utilis
         private string GetConnectionString()
         {
             var t = _tenant.Current!;
-                
+
             var sbFallback = new SqlConnectionStringBuilder
             {
                 DataSource = EnsureTcpPrefix(t.Server),
@@ -35,7 +35,7 @@ namespace FinabitAPI.Utilis
                 PersistSecurityInfo = false,
                 ConnectTimeout = 60,
                 Pooling = true,
-                MinPoolSize = 1
+                MinPoolSize = 1,
             };
             return sbFallback.ConnectionString;
         }
@@ -43,8 +43,10 @@ namespace FinabitAPI.Utilis
         private static string EnsureTcpPrefix(string server)
         {
             var s = server?.Trim() ?? string.Empty;
-            if (!s.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase) &&
-                !s.StartsWith("np:", StringComparison.OrdinalIgnoreCase))
+            if (
+                !s.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase)
+                && !s.StartsWith("np:", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 s = "tcp:" + s;
             }
@@ -61,9 +63,16 @@ namespace FinabitAPI.Utilis
 
         private string TryUnprotect(string? value)
         {
-            if (string.IsNullOrWhiteSpace(value)) return value ?? string.Empty;
-            try { return _protector.Unprotect(value); } // works if it’s ciphertext
-            catch { return value!; }                    // if it’s plaintext, keep it as-is
+            if (string.IsNullOrWhiteSpace(value))
+                return value ?? string.Empty;
+            try
+            {
+                return _protector.Unprotect(value);
+            } // works if it’s ciphertext
+            catch
+            {
+                return value!;
+            } // if it’s plaintext, keep it as-is
         }
 
         public SqlConnection GetConnection() => new SqlConnection(GetConnectionString());
@@ -76,8 +85,15 @@ namespace FinabitAPI.Utilis
             int[] delaysMs = { 100, 200, 400 };
             for (int i = 0; ; i++)
             {
-                try { await cn.OpenAsync(ct); return cn; }
-                catch when (i < delaysMs.Length) { await Task.Delay(delaysMs[i], ct); }
+                try
+                {
+                    await cn.OpenAsync(ct);
+                    return cn;
+                }
+                catch when (i < delaysMs.Length)
+                {
+                    await Task.Delay(delaysMs[i], ct);
+                }
             }
         }
 
@@ -99,7 +115,6 @@ namespace FinabitAPI.Utilis
             {
                 SqlCommand cmd = new SqlCommand("sp_m_GetItemsState", cnn);
                 cmd.CommandType = CommandType.StoredProcedure;
-
 
                 SqlParameter param;
                 param = new SqlParameter("@p_DepartamentID", SqlDbType.Int);
@@ -149,7 +164,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
@@ -158,7 +172,7 @@ namespace FinabitAPI.Utilis
         }
 
         #endregion
-        public List<Items> GetItems_API(DataTable dt,string Email)
+        public List<Items> GetItems_API(DataTable dt, string Email)
         {
             List<Items> clsList = new List<Items>();
 
@@ -177,8 +191,6 @@ namespace FinabitAPI.Utilis
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
-
-
 
                 try
                 {
@@ -206,16 +218,14 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
-
         }
-        public List<Items> GetItemsByItemID_API(string ItemID,string Email)
+
+        public List<Items> GetItemsByItemID_API(string ItemID, string Email)
         {
             List<Items> clsList = new List<Items>();
 
@@ -234,8 +244,6 @@ namespace FinabitAPI.Utilis
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
-
-
 
                 try
                 {
@@ -263,15 +271,13 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
-
         }
+
         public List<ItemsLookup> GetItemsByDate_API(string Date)
         {
             List<ItemsLookup> clsList = new List<ItemsLookup>();
@@ -286,7 +292,6 @@ namespace FinabitAPI.Utilis
                 param.Direction = ParameterDirection.Input;
                 param.Value = Date;
                 cmd.Parameters.Add(param);
-
 
                 try
                 {
@@ -345,13 +350,11 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
         }
 
         public List<ItemsLookup> GetAllItems()
@@ -420,13 +423,11 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
         }
 
         public List<Items> GetItemsProdhuesi_API(string Prodhuesi)
@@ -448,7 +449,6 @@ namespace FinabitAPI.Utilis
                 //param.Direction = ParameterDirection.Input;
                 //param.Value = PageNumber;
                 //cmd.Parameters.Add(param);
-
 
                 try
                 {
@@ -477,14 +477,13 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
         }
+
         public List<Prodhuesi> GetProdhuesi()
         {
             List<Prodhuesi> clsList = new List<Prodhuesi>();
@@ -513,7 +512,6 @@ namespace FinabitAPI.Utilis
                             cls.Shifra = Convert.ToString(dr["Shifra"]);
                             cls.Emertimi = Convert.ToString(dr["Emri"]);
 
-
                             clsList.Add(cls);
                         }
                     }
@@ -521,14 +519,14 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
         }
-        public List<Items> GetItems_API_2(DataTable dt,string Email)
+
+        public List<Items> GetItems_API_2(DataTable dt, string Email)
         {
             List<Items> clsList = new List<Items>();
 
@@ -547,7 +545,6 @@ namespace FinabitAPI.Utilis
                 param.Direction = ParameterDirection.Input;
                 param.Value = Email;
                 cmd.Parameters.Add(param);
-
 
                 try
                 {
@@ -575,15 +572,13 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
-
         }
+
         #region ListSystemDataTable
 
         public DataTable ListSystemDataTable()
@@ -616,7 +611,6 @@ namespace FinabitAPI.Utilis
 
         public void GetOptions()
         {
-
             using (SqlConnection cnn = GetConnection())
             {
                 SqlCommand cmd = new SqlCommand("spGetOptions", cnn);
@@ -635,11 +629,21 @@ namespace FinabitAPI.Utilis
                             OptionsData.POSPartnerID = Convert.ToInt32(dr["POSPartnerID"]);
                             OptionsData.AllTables = Convert.ToBoolean(dr["AllTables"]);
                             OptionsData.NrCopies = Convert.ToInt32(dr["NrCopies"]);
-                            OptionsData.TerminCashAccount = Convert.ToString(dr["TerminCashAccount"]);
-                            OptionsData.EmployeeCashAccount = Convert.ToString(dr["EmployeeCashAccount"]);
-                            OptionsData.GetFirstDescription = Convert.ToBoolean(dr["GetFirstDescription"]);
-                            OptionsData.EmployeeAdvanceAccount = Convert.ToString(dr["EmployeeAdvanceAccount"]);
-                            OptionsData.PayablesVATAccount = Convert.ToString(dr["PayablesVATAccount"]);
+                            OptionsData.TerminCashAccount = Convert.ToString(
+                                dr["TerminCashAccount"]
+                            );
+                            OptionsData.EmployeeCashAccount = Convert.ToString(
+                                dr["EmployeeCashAccount"]
+                            );
+                            OptionsData.GetFirstDescription = Convert.ToBoolean(
+                                dr["GetFirstDescription"]
+                            );
+                            OptionsData.EmployeeAdvanceAccount = Convert.ToString(
+                                dr["EmployeeAdvanceAccount"]
+                            );
+                            OptionsData.PayablesVATAccount = Convert.ToString(
+                                dr["PayablesVATAccount"]
+                            );
                             OptionsData.SalesVATAccount = Convert.ToString(dr["SalesVATAccount"]);
                             //OptionsData.ItemPendingAccount = Convert.ToString(dr["ItemPendingAccount"]);
                             OptionsData.DUDPartner = Convert.ToInt32(dr["DUDPartner"]);
@@ -650,7 +654,9 @@ namespace FinabitAPI.Utilis
                             //OptionsData.FeeAccount = Convert.ToString(dr["FeeAccount"]);
                             //OptionsData.AdvanceAccount = Convert.ToString(dr["AdvanceAccount"]);
                             OptionsData.POSVAT = Convert.ToInt32(dr["POSVAT"]);
-                            OptionsData.PrintTranIDInFiscal = Convert.ToBoolean(dr["PrintTranIDInFiscal"]);
+                            OptionsData.PrintTranIDInFiscal = Convert.ToBoolean(
+                                dr["PrintTranIDInFiscal"]
+                            );
                             OptionsData.WorksWithRFID = Convert.ToBoolean(dr["WorksWithRFID"]);
                             OptionsData.UseOldItems = Convert.ToBoolean(dr["UseOldItems"]);
                             OptionsData.LogOffAfterPOS = Convert.ToBoolean(dr["LogOffAfterPOS"]);
@@ -658,26 +664,63 @@ namespace FinabitAPI.Utilis
                             //OptionsData.Printer2 = Convert.ToString(dr["Printer2"]);
                             OptionsData.ProposeVAT = Convert.ToBoolean(dr["ProposeVAT"]);
                             OptionsData.PayableAccount = Convert.ToString(dr["PayableAccount"]);
-                            OptionsData.ReceivableAccount = Convert.ToString(dr["ReceivableAccount"]);
-                            OptionsData.UseDoublePartners = Convert.ToBoolean(dr["UseDoublePartners"]);
-                            OptionsData.UseRegularInvoice = Convert.ToBoolean(dr["UseRegularInvoice"]);
-                            OptionsData.ShowTimeAtPOSInvoice = Convert.ToBoolean(dr["ShowTimeAtPOSInvoice"]);
-                            OptionsData.AutomaticallyCalculatePrice = Convert.ToBoolean(dr["AutomaticallyCalculatePrice"]);
+                            OptionsData.ReceivableAccount = Convert.ToString(
+                                dr["ReceivableAccount"]
+                            );
+                            OptionsData.UseDoublePartners = Convert.ToBoolean(
+                                dr["UseDoublePartners"]
+                            );
+                            OptionsData.UseRegularInvoice = Convert.ToBoolean(
+                                dr["UseRegularInvoice"]
+                            );
+                            OptionsData.ShowTimeAtPOSInvoice = Convert.ToBoolean(
+                                dr["ShowTimeAtPOSInvoice"]
+                            );
+                            OptionsData.AutomaticallyCalculatePrice = Convert.ToBoolean(
+                                dr["AutomaticallyCalculatePrice"]
+                            );
                             OptionsData.NumberOfCopy1 = Convert.ToInt32(dr["NumberOfCopy1"]);
                             OptionsData.ShowWages = Convert.ToBoolean(dr["ShowWages"]);
                             OptionsData.ShowFixedAssets = Convert.ToBoolean(dr["ShowFixedAssets"]);
                             OptionsData.ShowHotel = Convert.ToBoolean(dr["ShowHotel"]);
-                            OptionsData.PrintFiscalInvoice = dr["PrintFiscalInvoice"] == DBNull.Value ? false : Convert.ToBoolean(dr["PrintFiscalInvoice"]);
-                            OptionsData.PrintFiscalAlways = dr["PrintFiscalAlways"] == DBNull.Value ? false : Convert.ToBoolean(dr["PrintFiscalAlways"]);
-                            OptionsData.TranNoType = dr["TranNoType"] == DBNull.Value ? 1 : Convert.ToInt32(dr["TranNoType"]);
-                            OptionsData.GroupIncomeAccount = dr["GroupIncomeAccount"] == DBNull.Value ? "" : Convert.ToString(dr["GroupIncomeAccount"]);
-                            OptionsData.GroupExpenseAccount = dr["GroupExpenseAccount"] == DBNull.Value ? "" : Convert.ToString(dr["GroupExpenseAccount"]);
-                            OptionsData.GroupAssetAccount = dr["GroupAssetAccount"] == DBNull.Value ? "" : Convert.ToString(dr["GroupAssetAccount"]);
-                            OptionsData.PrintFiscalAfterEachOrder = dr["PrintFiscalAfterEachOrder"] == DBNull.Value ? false : Convert.ToBoolean(dr["PrintFiscalAfterEachOrder"]);
+                            OptionsData.PrintFiscalInvoice =
+                                dr["PrintFiscalInvoice"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["PrintFiscalInvoice"]);
+                            OptionsData.PrintFiscalAlways =
+                                dr["PrintFiscalAlways"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["PrintFiscalAlways"]);
+                            OptionsData.TranNoType =
+                                dr["TranNoType"] == DBNull.Value
+                                    ? 1
+                                    : Convert.ToInt32(dr["TranNoType"]);
+                            OptionsData.GroupIncomeAccount =
+                                dr["GroupIncomeAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["GroupIncomeAccount"]);
+                            OptionsData.GroupExpenseAccount =
+                                dr["GroupExpenseAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["GroupExpenseAccount"]);
+                            OptionsData.GroupAssetAccount =
+                                dr["GroupAssetAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["GroupAssetAccount"]);
+                            OptionsData.PrintFiscalAfterEachOrder =
+                                dr["PrintFiscalAfterEachOrder"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["PrintFiscalAfterEachOrder"]);
                             OptionsData.UseSubOrders = Convert.ToBoolean(dr["UseSubOrders"]);
-                            OptionsData.UseDoubleNumberInSales = Convert.ToBoolean(dr["UseDoubleNumberInSales"]);
-                            OptionsData.ShowPaletsInMobile = Convert.ToBoolean(dr["DontShowPaletsInMobile"]);
-                            OptionsData.GjeneroNotenKreditore = Convert.ToBoolean(dr["GjeneroNotenKreditore"]);
+                            OptionsData.UseDoubleNumberInSales = Convert.ToBoolean(
+                                dr["UseDoubleNumberInSales"]
+                            );
+                            OptionsData.ShowPaletsInMobile = Convert.ToBoolean(
+                                dr["DontShowPaletsInMobile"]
+                            );
+                            OptionsData.GjeneroNotenKreditore = Convert.ToBoolean(
+                                dr["GjeneroNotenKreditore"]
+                            );
 
                             break;
                         }
@@ -773,8 +816,14 @@ namespace FinabitAPI.Utilis
                             cls.LUD = Convert.ToDateTime(dr["LUD"]);
                             cls.LUB = Convert.ToInt32(dr["LUB"]);
                             cls.LUN = Convert.ToInt32(dr["LUN"]);
-                            cls.AllowNegative = dr["AllowNegative"] == DBNull.Value ? true : Convert.ToBoolean(dr["AllowNegative"]);
-                            cls.CompanyID = dr["CompanyID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["CompanyID"]);
+                            cls.AllowNegative =
+                                dr["AllowNegative"] == DBNull.Value
+                                    ? true
+                                    : Convert.ToBoolean(dr["AllowNegative"]);
+                            cls.CompanyID =
+                                dr["CompanyID"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["CompanyID"]);
                             break;
                         }
                     }
@@ -790,7 +839,7 @@ namespace FinabitAPI.Utilis
         }
 
         #endregion
-        
+
         #region SelectVatPercentByID
 
         public VATPercent SelectVatPercentByID(VATPercent cls)
@@ -880,11 +929,26 @@ namespace FinabitAPI.Utilis
                             cls.SalesPrice = Convert.ToDecimal(dr["SalesPrice"]);
                             cls.ViewPOS = Convert.ToBoolean(dr["ViewPOS"]);
                             cls.Color = Convert.ToString(dr["Color"]);
-                            cls.LocationID = dr["LocationID"] == DBNull.Value ? 1 : Convert.ToInt32(dr["LocationID"]);
-                            cls.Taxable = dr["Taxable"] == DBNull.Value ? false : Convert.ToBoolean(dr["Taxable"]);
-                            cls.VATValue = dr["VATValue"] == DBNull.Value ? 1 : Convert.ToDecimal(dr["VATValue"]);
-                            cls.DoganaValue = dr["DoganaValue"] == DBNull.Value ? 1 : Convert.ToDecimal(dr["DoganaValue"]);
-                            cls.AkcizaValue = dr["AkcizaValue"] == DBNull.Value ? 1 : Convert.ToDecimal(dr["AkcizaValue"]);
+                            cls.LocationID =
+                                dr["LocationID"] == DBNull.Value
+                                    ? 1
+                                    : Convert.ToInt32(dr["LocationID"]);
+                            cls.Taxable =
+                                dr["Taxable"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["Taxable"]);
+                            cls.VATValue =
+                                dr["VATValue"] == DBNull.Value
+                                    ? 1
+                                    : Convert.ToDecimal(dr["VATValue"]);
+                            cls.DoganaValue =
+                                dr["DoganaValue"] == DBNull.Value
+                                    ? 1
+                                    : Convert.ToDecimal(dr["DoganaValue"]);
+                            cls.AkcizaValue =
+                                dr["AkcizaValue"] == DBNull.Value
+                                    ? 1
+                                    : Convert.ToDecimal(dr["AkcizaValue"]);
                             clsList.Add(cls);
                         }
                     }
@@ -906,7 +970,6 @@ namespace FinabitAPI.Utilis
 
         public void Insert(Transactions cls)
         {
-
             using (SqlConnection cnn = GetConnection())
             {
                 SqlCommand cmd = new SqlCommand("spTransactionsInsert", cnn);
@@ -1242,12 +1305,10 @@ namespace FinabitAPI.Utilis
                     param.Value = cls.IncludeTransport;
                     cmd.Parameters.Add(param);
 
-
                     param = new SqlParameter("@HostName", SqlDbType.VarChar);
                     param.Direction = ParameterDirection.Input;
                     param.Value = cls.Memo; // perkohesisht luan rolin e HostName
                     cmd.Parameters.Add(param);
-
 
                     param = new SqlParameter("@Longitude", SqlDbType.Decimal);
                     param.Direction = ParameterDirection.Input;
@@ -1307,7 +1368,7 @@ namespace FinabitAPI.Utilis
                 }
             }
 
-           // this.ErrorID = cls.ErrorID;
+            // this.ErrorID = cls.ErrorID;
         }
 
         #endregion
@@ -1348,24 +1409,35 @@ namespace FinabitAPI.Utilis
                             cls.InvoiceNo = Convert.ToString(dr["InvoiceNo"]);
                             cls.DUDNo = Convert.ToString(dr["DUDNo"]);
                             cls.VAT = Convert.ToBoolean(dr["VAT"]);
-                            cls.InPL = dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
+                            cls.InPL =
+                                dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
                             cls.PartnerID = Convert.ToInt32(dr["PartnerID"]);
                             cls.PartnersAddress = Convert.ToString(dr["PartnersAddress"]);
-                            cls.PartnersContactPerson = Convert.ToString(dr["PartnersContactPerson"]);
+                            cls.PartnersContactPerson = Convert.ToString(
+                                dr["PartnersContactPerson"]
+                            );
                             cls.PartnersPhoneNo = Convert.ToString(dr["PartnersPhoneNo"]);
                             cls.DepartmentID = Convert.ToInt32(dr["DepartmentID"]);
-                            cls.DriverID = dr["DriverID"] == DBNull.Value ? -1 : int.Parse(dr["DriverID"].ToString());
+                            cls.DriverID =
+                                dr["DriverID"] == DBNull.Value
+                                    ? -1
+                                    : int.Parse(dr["DriverID"].ToString());
                             cls.PlateNo = Convert.ToString(dr["PlateNoDriver"]);
                             try
                             {
-                                cls.InternalDepartmentID = Convert.ToInt32(dr["InternalDepartmentID"]);
+                                cls.InternalDepartmentID = Convert.ToInt32(
+                                    dr["InternalDepartmentID"]
+                                );
                             }
                             catch
                             {
                                 cls.InternalDepartmentID = 0;
                             }
                             cls.EmpID = Convert.ToInt32(dr["EmpID"]);
-                            cls.CashAccount = dr["CashAccount"] == DBNull.Value ? "" : Convert.ToString(dr["CashAccount"]);
+                            cls.CashAccount =
+                                dr["CashAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["CashAccount"]);
                             cls.Import = Convert.ToBoolean(dr["Import"]);
                             cls.Value = Convert.ToDecimal(dr["Value"]);
                             cls.VATValue = Convert.ToDecimal(dr["VATValue"]);
@@ -1377,7 +1449,11 @@ namespace FinabitAPI.Utilis
                             cls.Reference = Convert.ToString(dr["Reference"]);
                             cls.Links = Convert.ToString(dr["Links"]);
                             cls.Active = Convert.ToBoolean(dr["Active"]);
-                            cls.JournalStatus = dr["JournalStatus"] == DBNull.Value ? false : Convert.ToBoolean(dr["JournalStatus"]); ;
+                            cls.JournalStatus =
+                                dr["JournalStatus"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["JournalStatus"]);
+                            ;
                             cls.InsBy = Convert.ToInt32(dr["InsBy"]);
                             cls.InsDate = Convert.ToDateTime(dr["InsDate"]);
                             cls.LUB = Convert.ToInt32(dr["LUB"]);
@@ -1388,24 +1464,73 @@ namespace FinabitAPI.Utilis
                             cls.Akciza = Convert.ToDecimal(dr["Akciza"]);
                             cls.RABAT = Convert.ToDecimal(dr["RABAT"]);
                             cls.ReferenceID = Convert.ToInt32(dr["ReferenceID"]);
-                            cls.Commission1 = dr["Commission1"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission1"]);
-                            cls.Commission2 = dr["Commission2"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission2"]);
-                            cls.Commission3 = dr["Commission3"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission3"]);
-                            cls.SuficitAccount = dr["SuficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["SuficitAccount"]);
-                            cls.DeficitAccount = dr["DeficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["DeficitAccount"]);
-                            cls.VehicleID = dr["VehicleID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["VehicleID"]);
-                            cls.ItemID = dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
-                            cls.Quantity = dr["Quantity"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Quantity"]);
-                            cls.PartnerItemID = dr["PartnerItemID"] == DBNull.Value ? "" : dr["PartnerItemID"].ToString();
-                            cls.CurrencyID = dr["CurrencyID"] == DBNull.Value ? 0 : int.Parse(dr["CurrencyID"].ToString());
-                            cls.CurrencyRate = dr["CurrencyRate"] == DBNull.Value ? 0 : decimal.Parse(dr["CurrencyRate"].ToString());
-                            cls.OverValue = dr["OverValue"] == DBNull.Value ? 0 : decimal.Parse(dr["OverValue"].ToString());
-                            cls.Charges = dr["Charges"] == DBNull.Value ? 0 : decimal.Parse(dr["Charges"].ToString());
+                            cls.Commission1 =
+                                dr["Commission1"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["Commission1"]);
+                            cls.Commission2 =
+                                dr["Commission2"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["Commission2"]);
+                            cls.Commission3 =
+                                dr["Commission3"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["Commission3"]);
+                            cls.SuficitAccount =
+                                dr["SuficitAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["SuficitAccount"]);
+                            cls.DeficitAccount =
+                                dr["DeficitAccount"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["DeficitAccount"]);
+                            cls.VehicleID =
+                                dr["VehicleID"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["VehicleID"]);
+                            cls.ItemID =
+                                dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
+                            cls.Quantity =
+                                dr["Quantity"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToDecimal(dr["Quantity"]);
+                            cls.PartnerItemID =
+                                dr["PartnerItemID"] == DBNull.Value
+                                    ? ""
+                                    : dr["PartnerItemID"].ToString();
+                            cls.CurrencyID =
+                                dr["CurrencyID"] == DBNull.Value
+                                    ? 0
+                                    : int.Parse(dr["CurrencyID"].ToString());
+                            cls.CurrencyRate =
+                                dr["CurrencyRate"] == DBNull.Value
+                                    ? 0
+                                    : decimal.Parse(dr["CurrencyRate"].ToString());
+                            cls.OverValue =
+                                dr["OverValue"] == DBNull.Value
+                                    ? 0
+                                    : decimal.Parse(dr["OverValue"].ToString());
+                            cls.Charges =
+                                dr["Charges"] == DBNull.Value
+                                    ? 0
+                                    : decimal.Parse(dr["Charges"].ToString());
                             cls.ContractID = Convert.ToInt32(dr["ContractID"]);
-                            cls.POSPaid = dr["POSPaid"] == DBNull.Value ? false : Convert.ToBoolean(dr["POSPaid"]);
-                            cls.HReservationID = dr["HReservationID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["HReservationID"]);
-                            cls.PaymentTypeID = dr["PaymentTypeID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["PaymentTypeID"]);
-                            cls.PaymentTypeName = dr["PaymentTypeName"] == DBNull.Value ? "" : Convert.ToString(dr["PaymentTypeName"]);
+                            cls.POSPaid =
+                                dr["POSPaid"] == DBNull.Value
+                                    ? false
+                                    : Convert.ToBoolean(dr["POSPaid"]);
+                            cls.HReservationID =
+                                dr["HReservationID"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["HReservationID"]);
+                            cls.PaymentTypeID =
+                                dr["PaymentTypeID"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(dr["PaymentTypeID"]);
+                            cls.PaymentTypeName =
+                                dr["PaymentTypeName"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToString(dr["PaymentTypeName"]);
                             cls.CompanyID = Convert.ToInt16(dr["CompanyID"]);
                             cls.Longitude = Convert.ToDecimal(dr["Longitude"]);
                             cls.Latitude = Convert.ToDecimal(dr["Latitude"]);
@@ -1429,7 +1554,12 @@ namespace FinabitAPI.Utilis
         #endregion
 
         #region CashJournalIDByCashAccount
-        public int CashJournalIDByCashAccount(string CashAccount, int TypeID, DateTime Date, int CompanyID)
+        public int CashJournalIDByCashAccount(
+            string CashAccount,
+            int TypeID,
+            DateTime Date,
+            int CompanyID
+        )
         {
             int CashJournalID = 0;
 
@@ -1480,7 +1610,6 @@ namespace FinabitAPI.Utilis
 
         public DataTable GetCustomerAnalyticsAll(DateTime FromDate, DateTime ToDate)
         {
-
             DataTable dt = new DataTable();
             dt.TableName = "GetCustomerAnalyticsAll";
 
@@ -1507,7 +1636,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception)
                 {
-
                     string s = "";
                 }
                 finally
@@ -1517,12 +1645,14 @@ namespace FinabitAPI.Utilis
                 }
             }
             return dt;
-
         }
 
-        public DataTable GetCustomerAnalyticsByPartnerID(DateTime FromDate, DateTime ToDate, int PartnerID)
+        public DataTable GetCustomerAnalyticsByPartnerID(
+            DateTime FromDate,
+            DateTime ToDate,
+            int PartnerID
+        )
         {
-
             DataTable dt = new DataTable();
             dt.TableName = "GetCustomerAnalyticsByPartnerID";
             using (SqlConnection cnn = GetConnection())
@@ -1552,7 +1682,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception)
                 {
-
                     string s = "";
                 }
                 finally
@@ -1562,12 +1691,17 @@ namespace FinabitAPI.Utilis
                 }
             }
             return dt;
-
         }
 
-        public DataTable GetCustomerAnalyticsByPartnerID_MAR(int PartnerID, int ProfileID, int TransactionType,int PageId,int RowsForPage,int Language)
+        public DataTable GetCustomerAnalyticsByPartnerID_MAR(
+            int PartnerID,
+            int ProfileID,
+            int TransactionType,
+            int PageId,
+            int RowsForPage,
+            int Language
+        )
         {
-
             DataTable dt = new DataTable();
             dt.TableName = "GetCustomerAnalyticsByPartnerID_MAR";
             using (SqlConnection cnn = GetConnection())
@@ -1608,7 +1742,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception)
                 {
-
                     string s = "";
                 }
                 finally
@@ -1618,11 +1751,11 @@ namespace FinabitAPI.Utilis
                 }
             }
             return dt;
-
         }
+
         #region SelectAll
 
-        public  List<Orders> OrdersList(string FromDate, string ToDate)
+        public List<Orders> OrdersList(string FromDate, string ToDate)
         {
             List<Orders> clsList = new List<Orders>();
             using (SqlConnection cnn = GetConnection())
@@ -1642,8 +1775,6 @@ namespace FinabitAPI.Utilis
                 param.Direction = ParameterDirection.Input;
                 param.Value = ToDate;
                 cmd.Parameters.Add(param);
-
-
 
                 try
                 {
@@ -1674,9 +1805,7 @@ namespace FinabitAPI.Utilis
                             cls.Sasia = Convert.ToDecimal(dr["Sasia"]);
                             cls.Cmimi = Convert.ToDecimal(dr["Cmimi"]);
 
-
                             clsList.Add(cls);
-
                         }
                     }
                     cnn.Close();
@@ -1690,8 +1819,7 @@ namespace FinabitAPI.Utilis
             return clsList;
         }
 
-
-        public DataTable CustomersList(int Type,int DepartmentID)
+        public DataTable CustomersList(int Type, int DepartmentID)
         {
             DataTable dt = new DataTable();
 
@@ -1716,7 +1844,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception)
                 {
-
                     string s = "";
                 }
                 finally
@@ -1727,6 +1854,7 @@ namespace FinabitAPI.Utilis
             }
             return dt;
         }
+
         public DataTable DepartmentsList()
         {
             DataTable dt = new DataTable();
@@ -1749,7 +1877,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception)
                 {
-
                     string s = "";
                 }
                 finally
@@ -1793,16 +1920,13 @@ namespace FinabitAPI.Utilis
 
                 SqlParameter param;
 
-
                 param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = DepartmentID;
                 cmd.Parameters.Add(param);
 
-
                 try
                 {
-
                     SqlDataReader dr = cmd.ExecuteReader();
                     if (dr.HasRows)
                     {
@@ -1816,7 +1940,10 @@ namespace FinabitAPI.Utilis
                             cls.Taxable = Convert.ToBoolean(dr["Taxable"]);
                             cls.VATValue = Convert.ToDecimal(dr["VATValue"]);
                             cls.ItemGroup = Convert.ToString(dr["ItemGroup"]);
-                            cls.Photo = dr["Photo"] == DBNull.Value ? "" : Convert.ToBase64String((byte[])dr["Photo"]);
+                            cls.Photo =
+                                dr["Photo"] == DBNull.Value
+                                    ? ""
+                                    : Convert.ToBase64String((byte[])dr["Photo"]);
 
                             clsList.Add(cls);
                         }
@@ -1825,16 +1952,12 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
             }
             return clsList;
-
         }
-
-
 
         public List<ItemsAttributes> GetItemsAttributesWeb(string ItemID)
         {
@@ -1853,10 +1976,8 @@ namespace FinabitAPI.Utilis
                 param.Value = ItemID;
                 cmd.Parameters.Add(param);
 
-
                 try
                 {
-
                     SqlDataReader dr = cmd.ExecuteReader();
                     if (dr.HasRows)
                     {
@@ -1874,7 +1995,6 @@ namespace FinabitAPI.Utilis
                 }
                 catch (Exception ex)
                 {
-
                     string exp = ex.Message;
                     cnn.Close();
                 }
@@ -1891,7 +2011,6 @@ namespace FinabitAPI.Utilis
                 SqlCommand cmd = new SqlCommand("GetItemsStateForOneItem_API", cnn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 cnn.Open();
-
 
                 SqlParameter param;
 
@@ -1926,7 +2045,7 @@ namespace FinabitAPI.Utilis
                                     UnitName1 = Convert.ToString(dr["UnitName1"]),
                                     UnitName2 = Convert.ToString(dr["UnitName2"]),
                                     Color = Convert.ToString(dr["Color"]),
-                                    Number = Convert.ToString(dr["Number"])
+                                    Number = Convert.ToString(dr["Number"]),
                                 };
 
                                 clsList.Add(cls);
@@ -1943,9 +2062,15 @@ namespace FinabitAPI.Utilis
         }
 
         public async Task<List<Orders>> GetTransactions(
-     string fromDate, string toDate, int type,
-     string itemID = null, string itemName = null, string partnerName = null, string locationName = null,
-     CancellationToken ct = default)
+            string fromDate,
+            string toDate,
+            int type,
+            string itemID = null,
+            string itemName = null,
+            string partnerName = null,
+            string locationName = null,
+            CancellationToken ct = default
+        )
         {
             var list = new List<Orders>();
 
@@ -1953,49 +2078,108 @@ namespace FinabitAPI.Utilis
             await using var cmd = new SqlCommand("spTransactionsList_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate });
+            cmd.Parameters.Add(
+                new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate }
+            );
             cmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.VarChar) { Value = toDate });
             cmd.Parameters.Add(new SqlParameter("@TranTypeID", SqlDbType.Int) { Value = type });
-            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
-            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
-            cmd.Parameters.Add(new SqlParameter("@LocationName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(locationName) ? "%" : locationName });
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(itemID) ? "%" : itemID,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(itemName) ? "%" : itemName,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@LocationName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(locationName) ? "%" : locationName,
+                }
+            );
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
 
             while (await dr.ReadAsync(ct))
             {
-                list.Add(new Orders
-                {
-                    ID = dr["ID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID"]),
-                    Data = dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
-                    Numri = dr["Numri"] == DBNull.Value ? null : Convert.ToString(dr["Numri"]),
-                    ID_Konsumatorit = dr["ID_Konsumatorit"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID_Konsumatorit"]),
-                    Konsumatori = dr["Konsumatori"] == DBNull.Value ? null : Convert.ToString(dr["Konsumatori"]),
-                    Location = dr["LocationName"] == DBNull.Value ? null : Convert.ToString(dr["LocationName"]),
-                    Statusi_Faturimit = dr["Statusi_Faturimit"] == DBNull.Value ? null : Convert.ToString(dr["Statusi_Faturimit"]),
-                    Shifra = dr["Shifra"] == DBNull.Value ? null : Convert.ToString(dr["Shifra"]),
-                    Emertimi = dr["Emertimi"] == DBNull.Value ? null : Convert.ToString(dr["Emertimi"]),
-                    Njesia_Artik = dr["Njesia_Artik"] == DBNull.Value ? null : Convert.ToString(dr["Njesia_Artik"]),
-                    Description = dr["Description"] == DBNull.Value ? null : Convert.ToString(dr["Description"]),
-                    Sasia = dr["Sasia"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Sasia"]),
-                    Cmimi = dr["Cmimi"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Cmimi"]),
-                    SalesPrice = dr["SalesPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["SalesPrice"]),
-                    CostPrice = dr["CostPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["CostPrice"])
-                });
+                list.Add(
+                    new Orders
+                    {
+                        ID = dr["ID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID"]),
+                        Data =
+                            dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
+                        Numri = dr["Numri"] == DBNull.Value ? null : Convert.ToString(dr["Numri"]),
+                        ID_Konsumatorit =
+                            dr["ID_Konsumatorit"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["ID_Konsumatorit"]),
+                        Konsumatori =
+                            dr["Konsumatori"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["Konsumatori"]),
+                        Location =
+                            dr["LocationName"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["LocationName"]),
+                        Statusi_Faturimit =
+                            dr["Statusi_Faturimit"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["Statusi_Faturimit"]),
+                        Shifra =
+                            dr["Shifra"] == DBNull.Value ? null : Convert.ToString(dr["Shifra"]),
+                        Emertimi =
+                            dr["Emertimi"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["Emertimi"]),
+                        Njesia_Artik =
+                            dr["Njesia_Artik"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["Njesia_Artik"]),
+                        Description =
+                            dr["Description"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["Description"]),
+                        Sasia = dr["Sasia"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Sasia"]),
+                        Cmimi = dr["Cmimi"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Cmimi"]),
+                        SalesPrice =
+                            dr["SalesPrice"] == DBNull.Value
+                                ? 0m
+                                : Convert.ToDecimal(dr["SalesPrice"]),
+                        CostPrice =
+                            dr["CostPrice"] == DBNull.Value
+                                ? 0m
+                                : Convert.ToDecimal(dr["CostPrice"]),
+                    }
+                );
             }
 
             return list;
         }
 
         public async Task<List<TransactionAggregate>> GetTransactionsAggregate(
-     string fromDate, string toDate, int type,
-     string itemID = null, string itemName = null, string partnerName = null,
-     string locationName = null, bool isMonthly = false,
-     CancellationToken ct = default)
+            string fromDate,
+            string toDate,
+            int type,
+            string itemID = null,
+            string itemName = null,
+            string partnerName = null,
+            string locationName = null,
+            bool isMonthly = false,
+            CancellationToken ct = default
+        )
         {
             var list = new List<TransactionAggregate>();
 
@@ -2003,42 +2187,77 @@ namespace FinabitAPI.Utilis
             await using var cmd = new SqlCommand("spTransactionsListAggregate_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate });
+            cmd.Parameters.Add(
+                new SqlParameter("@FromDate", SqlDbType.VarChar) { Value = fromDate }
+            );
             cmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.VarChar) { Value = toDate });
             cmd.Parameters.Add(new SqlParameter("@TranTypeID", SqlDbType.Int) { Value = type });
-            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemID) ? "%" : itemID });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(itemName) ? "%" : itemName });
-            cmd.Parameters.Add(new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName });
-            cmd.Parameters.Add(new SqlParameter("@LocationName", SqlDbType.NVarChar, 200) { Value = string.IsNullOrEmpty(locationName) ? "%" : locationName });
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(itemID) ? "%" : itemID,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(itemName) ? "%" : itemName,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@PartnerName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(partnerName) ? "%" : partnerName,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@LocationName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrEmpty(locationName) ? "%" : locationName,
+                }
+            );
             cmd.Parameters.Add(new SqlParameter("@IsMonthly", SqlDbType.Bit) { Value = isMonthly });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
 
             while (await dr.ReadAsync(ct))
             {
-                list.Add(new TransactionAggregate
-                {
-                    Data = dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
-                    LocationName = dr["LocationName"] == DBNull.Value ? null : Convert.ToString(dr["LocationName"]), // NEW
-                    Value = dr["Value"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Value"]),
-                    ValueWithoutVat = dr["ValueWithoutVat"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["ValueWithoutVat"]),
-                    CostValue = dr["CostValue"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["CostValue"]),
-                    Rows = dr["rows"] == DBNull.Value ? 0 : Convert.ToInt32(dr["rows"])
-                });
+                list.Add(
+                    new TransactionAggregate
+                    {
+                        Data =
+                            dr["Data"] == DBNull.Value ? default : Convert.ToDateTime(dr["Data"]),
+                        LocationName =
+                            dr["LocationName"] == DBNull.Value
+                                ? null
+                                : Convert.ToString(dr["LocationName"]), // NEW
+                        Value = dr["Value"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Value"]),
+                        ValueWithoutVat =
+                            dr["ValueWithoutVat"] == DBNull.Value
+                                ? 0
+                                : Convert.ToDecimal(dr["ValueWithoutVat"]),
+                        CostValue =
+                            dr["CostValue"] == DBNull.Value
+                                ? 0
+                                : Convert.ToDecimal(dr["CostValue"]),
+                        Rows = dr["rows"] == DBNull.Value ? 0 : Convert.ToInt32(dr["rows"]),
+                    }
+                );
             }
 
             return list;
         }
 
         public async Task<List<IncomeStatement>> GetIncomeStatementAsync(
-    string fromDate,
-    string toDate,
-    bool isMonthly = false,
-    string filter = "",                                // NEW
-    CancellationToken ct = default)
+            string fromDate,
+            string toDate,
+            bool isMonthly = false,
+            string filter = "", // NEW
+            CancellationToken ct = default
+        )
         {
             var list = new List<IncomeStatement>();
 
@@ -2046,43 +2265,67 @@ namespace FinabitAPI.Utilis
             await using var cmd = new SqlCommand("spIncomeStatement_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add(new SqlParameter("@prmFromDate", SqlDbType.SmallDateTime) { Value = fromDate });
-            cmd.Parameters.Add(new SqlParameter("@prmEndDate", SqlDbType.SmallDateTime) { Value = toDate });
-            cmd.Parameters.Add(new SqlParameter("@filter", SqlDbType.NVarChar, 200) { Value = filter ?? string.Empty }); // NEW
+            cmd.Parameters.Add(
+                new SqlParameter("@prmFromDate", SqlDbType.SmallDateTime) { Value = fromDate }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@prmEndDate", SqlDbType.SmallDateTime) { Value = toDate }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@filter", SqlDbType.NVarChar, 200)
+                {
+                    Value = filter ?? string.Empty,
+                }
+            ); // NEW
             cmd.Parameters.Add(new SqlParameter("@IsMonthly", SqlDbType.Bit) { Value = isMonthly });
 
             await using var dr = await cmd.ExecuteReaderAsync(ct);
             while (await dr.ReadAsync(ct))
             {
-                list.Add(new IncomeStatement
-                {
-                    Account = dr["Account"] == DBNull.Value ? null : dr["Account"].ToString(),
-                    AccountGroup = dr["AccountGroup"] == DBNull.Value ? null : dr["AccountGroup"].ToString(),
-                    Date = dr["Date"] == DBNull.Value ? default : Convert.ToDateTime(dr["Date"]),
-                    Total = dr["Total"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Total"])
-                });
+                list.Add(
+                    new IncomeStatement
+                    {
+                        Account = dr["Account"] == DBNull.Value ? null : dr["Account"].ToString(),
+                        AccountGroup =
+                            dr["AccountGroup"] == DBNull.Value
+                                ? null
+                                : dr["AccountGroup"].ToString(),
+                        Date =
+                            dr["Date"] == DBNull.Value ? default : Convert.ToDateTime(dr["Date"]),
+                        Total = dr["Total"] == DBNull.Value ? 0m : Convert.ToDecimal(dr["Total"]),
+                    }
+                );
             }
 
             return list;
         }
 
         public async Task<int> CloneTransactionExactAsync(
-    int sourceId,
-    DateTime newDate,
-    CancellationToken ct = default)
+            int sourceId,
+            DateTime newDate,
+            string? newTransactionNo,
+            CancellationToken ct = default
+        )
         {
             await using var cnn = await OpenWithRetryAsync(ct);
             await using var cmd = new SqlCommand("dbo.usp_CloneTransactionExact_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
             cmd.Parameters.Add(new SqlParameter("@SourceID", SqlDbType.Int) { Value = sourceId });
-            cmd.Parameters.Add(new SqlParameter("@NewDate", SqlDbType.Date) { Value = newDate.Date });
+            cmd.Parameters.Add(
+                new SqlParameter("@NewDate", SqlDbType.Date) { Value = newDate.Date }
+            );
+
+            // Match the NVARCHAR length to your table's TransactionNo length (adjust 50 if different)
+            var p = new SqlParameter("@NewTransactionNo", SqlDbType.NVarChar, 50);
+            p.Value = (object?)newTransactionNo ?? DBNull.Value;
+            cmd.Parameters.Add(p);
 
             var obj = await cmd.ExecuteScalarAsync(ct);
             if (obj == null || obj == DBNull.Value)
@@ -2091,7 +2334,10 @@ namespace FinabitAPI.Utilis
             return Convert.ToInt32(obj);
         }
 
-        public async Task<PaginationResult<ItemsLookup>> GetAllItemsFilteredAsync(ItemsFilter filter, CancellationToken ct = default)
+        public async Task<PaginationResult<ItemsLookup>> GetAllItemsFilteredAsync(
+            ItemsFilter filter,
+            CancellationToken ct = default
+        )
         {
             var items = new List<ItemsLookup>();
             int totalCount = 0;
@@ -2101,17 +2347,25 @@ namespace FinabitAPI.Utilis
             await using var cmd = new SqlCommand("spGetItemsAll_Filtered_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add("@ItemName", SqlDbType.NVarChar, 200).Value = (object?)filter.ItemName ?? DBNull.Value;
-            cmd.Parameters.Add("@ItemID", SqlDbType.NVarChar, 100).Value = (object?)filter.ItemID ?? DBNull.Value;
-            cmd.Parameters.Add("@ItemGroupID", SqlDbType.Int).Value = (object?)filter.ItemGroupID ?? DBNull.Value;
-            cmd.Parameters.Add("@ItemGroup", SqlDbType.NVarChar, 200).Value = (object?)filter.ItemGroup ?? DBNull.Value;
-            cmd.Parameters.Add("@Barcode", SqlDbType.NVarChar, 100).Value = (object?)filter.Barcode ?? DBNull.Value;
-            cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 200).Value = (object?)filter.Category ?? DBNull.Value;
-            cmd.Parameters.Add("@Prodhuesi", SqlDbType.NVarChar, 200).Value = (object?)filter.Prodhuesi ?? DBNull.Value;
-            cmd.Parameters.Add("@Active", SqlDbType.Bit).Value = (object?)filter.Active ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemName", SqlDbType.NVarChar, 200).Value =
+                (object?)filter.ItemName ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemID", SqlDbType.NVarChar, 100).Value =
+                (object?)filter.ItemID ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemGroupID", SqlDbType.Int).Value =
+                (object?)filter.ItemGroupID ?? DBNull.Value;
+            cmd.Parameters.Add("@ItemGroup", SqlDbType.NVarChar, 200).Value =
+                (object?)filter.ItemGroup ?? DBNull.Value;
+            cmd.Parameters.Add("@Barcode", SqlDbType.NVarChar, 100).Value =
+                (object?)filter.Barcode ?? DBNull.Value;
+            cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 200).Value =
+                (object?)filter.Category ?? DBNull.Value;
+            cmd.Parameters.Add("@Prodhuesi", SqlDbType.NVarChar, 200).Value =
+                (object?)filter.Prodhuesi ?? DBNull.Value;
+            cmd.Parameters.Add("@Active", SqlDbType.Bit).Value =
+                (object?)filter.Active ?? DBNull.Value;
             cmd.Parameters.Add("@PageNumber", SqlDbType.Int).Value = filter.PageNumber;
             cmd.Parameters.Add("@PageSize", SqlDbType.Int).Value = filter.PageSize;
 
@@ -2126,7 +2380,8 @@ namespace FinabitAPI.Utilis
                     ItemName = dr["ItemName"] as string ?? string.Empty,
                     UnitName = dr["UnitName"] as string ?? string.Empty,
                     UnitID = dr["UnitID"] != DBNull.Value ? Convert.ToInt32(dr["UnitID"]) : 0,
-                    ItemGroupID = dr["ItemGroupID"] != DBNull.Value ? Convert.ToInt32(dr["ItemGroupID"]) : 0,
+                    ItemGroupID =
+                        dr["ItemGroupID"] != DBNull.Value ? Convert.ToInt32(dr["ItemGroupID"]) : 0,
                     ItemGroup = dr["ItemGroup"] as string ?? string.Empty,
                     Taxable = dr["Taxable"] != DBNull.Value && Convert.ToBoolean(dr["Taxable"]),
                     Active = dr["Active"] != DBNull.Value && Convert.ToBoolean(dr["Active"]),
@@ -2134,14 +2389,27 @@ namespace FinabitAPI.Utilis
                     Akciza = dr["Akciza"] != DBNull.Value && Convert.ToBoolean(dr["Akciza"]),
                     Color = dr["Color"] as string ?? string.Empty,
                     PDAItemName = dr["PDAItemName"] as string ?? string.Empty,
-                    VATValue = dr["VATValue"] != DBNull.Value ? Convert.ToDecimal(dr["VATValue"]) : 0m,
-                    AkcizaValue = dr["AkcizaValue"] != DBNull.Value ? Convert.ToDecimal(dr["AkcizaValue"]) : 0m,
+                    VATValue =
+                        dr["VATValue"] != DBNull.Value ? Convert.ToDecimal(dr["VATValue"]) : 0m,
+                    AkcizaValue =
+                        dr["AkcizaValue"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["AkcizaValue"])
+                            : 0m,
                     MaximumQuantity = dr["MaximumQuantity"]?.ToString() ?? "0",
-                    Coefficient = dr["Coefficient"] != DBNull.Value ? Convert.ToDecimal(dr["Coefficient"]) : 0m,
+                    Coefficient =
+                        dr["Coefficient"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["Coefficient"])
+                            : 0m,
                     Barcode1 = dr["barcode1"] as string ?? string.Empty,
                     Barcode2 = dr["barcode2"] as string ?? string.Empty,
-                    SalesPrice2 = dr["SalesPrice2"] != DBNull.Value ? Convert.ToDecimal(dr["SalesPrice2"]) : 0m,
-                    SalesPrice3 = dr["SalesPrice3"] != DBNull.Value ? Convert.ToDecimal(dr["SalesPrice3"]) : 0m,
+                    SalesPrice2 =
+                        dr["SalesPrice2"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["SalesPrice2"])
+                            : 0m,
+                    SalesPrice3 =
+                        dr["SalesPrice3"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["SalesPrice3"])
+                            : 0m,
                     Origin = dr["Origin"] as string ?? string.Empty,
                     Category = dr["Category"] as string ?? string.Empty,
                     PLU = dr["PLU"] as string ?? string.Empty,
@@ -2156,11 +2424,22 @@ namespace FinabitAPI.Utilis
                     CustomField5 = dr["CustomField5"] as string ?? string.Empty,
                     CustomField6 = dr["CustomField6"] as string ?? string.Empty,
                     Barcode3 = dr["Barcode3"] as string ?? string.Empty,
-                    NettoBruttoWeight = dr["NettoBruttoWeight"] != DBNull.Value ? Convert.ToDecimal(dr["NettoBruttoWeight"]) : 0m,
-                    BrutoWeight = dr["BrutoWeight"] != DBNull.Value ? Convert.ToDecimal(dr["BrutoWeight"]) : 0m,
-                    MaxDiscount = dr["MaxDiscount"] != DBNull.Value ? Convert.ToDecimal(dr["MaxDiscount"]) : 0m,
-                    ShifraProdhuesi = int.TryParse(dr["ShifraProdhuesit"]?.ToString(), out var val) ? val : 0,
-                    Prodhuesi = dr["Prodhuesi"] as string ?? string.Empty
+                    NettoBruttoWeight =
+                        dr["NettoBruttoWeight"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["NettoBruttoWeight"])
+                            : 0m,
+                    BrutoWeight =
+                        dr["BrutoWeight"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["BrutoWeight"])
+                            : 0m,
+                    MaxDiscount =
+                        dr["MaxDiscount"] != DBNull.Value
+                            ? Convert.ToDecimal(dr["MaxDiscount"])
+                            : 0m,
+                    ShifraProdhuesi = int.TryParse(dr["ShifraProdhuesit"]?.ToString(), out var val)
+                        ? val
+                        : 0,
+                    Prodhuesi = dr["Prodhuesi"] as string ?? string.Empty,
                 };
 
                 if (totalCount == 0 && dr["TotalCount"] != DBNull.Value)
@@ -2173,23 +2452,45 @@ namespace FinabitAPI.Utilis
             {
                 TotalCount = totalCount,
                 TotalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize),
-                Items = items
+                Items = items,
             };
         }
 
-        public int ItemsAdvancedExists(int departmentId, string itemId = null, string itemName = null, string barcode = null)
+        public int ItemsAdvancedExists(
+            int departmentId,
+            string itemId = null,
+            string itemName = null,
+            string barcode = null
+        )
         {
             using var cnn = GetConnection();
             using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
-            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
-            cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+            cmd.Parameters.Add(
+                new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)itemId ?? DBNull.Value,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)itemName ?? DBNull.Value,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@Barcode", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)barcode ?? DBNull.Value,
+                }
+            );
             cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 1 }); // legacy mode
 
             try
@@ -2207,35 +2508,61 @@ namespace FinabitAPI.Utilis
         /// <summary>
         /// New helper: returns the first matching row with details (or null if not found).
         /// </summary>
-        public ItemFoundDetails ItemsAdvancedFind(int departmentId, string itemId = null, string itemName = null, string barcode = null)
+        public ItemFoundDetails ItemsAdvancedFind(
+            int departmentId,
+            string itemId = null,
+            string itemName = null,
+            string barcode = null
+        )
         {
             using var cnn = GetConnection();
             using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
-            cmd.Parameters.Add(new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId });
-            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200) { Value = (object?)itemId ?? DBNull.Value });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200) { Value = (object?)itemName ?? DBNull.Value });
-            cmd.Parameters.Add(new SqlParameter("@Barcode", SqlDbType.NVarChar, 200) { Value = (object?)barcode ?? DBNull.Value });
+            cmd.Parameters.Add(
+                new SqlParameter("@DepartmentID", SqlDbType.Int) { Value = departmentId }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)itemId ?? DBNull.Value,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)itemName ?? DBNull.Value,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@Barcode", SqlDbType.NVarChar, 200)
+                {
+                    Value = (object?)barcode ?? DBNull.Value,
+                }
+            );
             cmd.Parameters.Add(new SqlParameter("@ReturnDetails", SqlDbType.Bit) { Value = 1 }); // detail mode
 
             try
             {
                 cnn.Open();
                 using var rdr = cmd.ExecuteReader();
-                if (!rdr.Read()) return null;
+                if (!rdr.Read())
+                    return null;
 
                 return new ItemFoundDetails
                 {
                     ID = rdr["ID"] is DBNull ? 0 : Convert.ToInt32(rdr["ID"]),
                     ItemID = rdr["ItemID"] as string,
                     ItemName = rdr["ItemName"] as string,
-                    DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
+                    DepartmentID =
+                        rdr["DepartmentID"] is DBNull
+                            ? (int?)null
+                            : Convert.ToInt32(rdr["DepartmentID"]),
                     MatchedBarcode = rdr["MatchedBarcode"] as string,
-                    VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"])
+                    VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"]),
                 };
             }
             catch (Exception ex)
@@ -2249,7 +2576,8 @@ namespace FinabitAPI.Utilis
             int departmentId,
             IEnumerable<ItemExistenceProbe> items,
             bool returnDetails = false,
-            CancellationToken ct = default)
+            CancellationToken ct = default
+        )
         {
             var results = new List<ItemExistenceBatchResponse>();
 
@@ -2257,7 +2585,7 @@ namespace FinabitAPI.Utilis
             using var cmd = new SqlCommand("spItemsAdvancedExists_API", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
             var pDept = cmd.Parameters.Add("@DepartmentID", SqlDbType.Int);
@@ -2282,7 +2610,7 @@ namespace FinabitAPI.Utilis
                     Index = x.Index,
                     ItemID = x.ItemID,
                     Name = x.Name,
-                    Barcode = x.Barcode
+                    Barcode = x.Barcode,
                 };
 
                 try
@@ -2303,9 +2631,15 @@ namespace FinabitAPI.Utilis
                                 ID = rdr["ID"] is DBNull ? 0 : Convert.ToInt32(rdr["ID"]),
                                 ItemID = rdr["ItemID"] as string,
                                 ItemName = rdr["ItemName"] as string,
-                                DepartmentID = rdr["DepartmentID"] is DBNull ? (int?)null : Convert.ToInt32(rdr["DepartmentID"]),
+                                DepartmentID =
+                                    rdr["DepartmentID"] is DBNull
+                                        ? (int?)null
+                                        : Convert.ToInt32(rdr["DepartmentID"]),
                                 MatchedBarcode = rdr["MatchedBarcode"] as string,
-                                VatValue = rdr["VatValue"] is DBNull ? 0m : Convert.ToDecimal(rdr["VatValue"]) // <-- add this
+                                VatValue =
+                                    rdr["VatValue"] is DBNull
+                                        ? 0m
+                                        : Convert.ToDecimal(rdr["VatValue"]), // <-- add this
                             };
                             resp.FoundID = det.ID;
                             resp.Exists = det.ID > 0;
@@ -2332,9 +2666,10 @@ namespace FinabitAPI.Utilis
         }
 
         public async Task<IReadOnlyList<DistinctItemNameDto>> GetDistinctItemNamesAsync(
-     string itemId = "",
-     string itemName = "",
-     CancellationToken cancellationToken = default)
+            string itemId = "",
+            string itemName = "",
+            CancellationToken cancellationToken = default
+        )
         {
             var results = new List<DistinctItemNameDto>();
 
@@ -2342,28 +2677,35 @@ namespace FinabitAPI.Utilis
             await using var cmd = new SqlCommand("[dbo].[spGeDistinctItyemNames_API]", cnn)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = DefaultCommandTimeoutSeconds
+                CommandTimeout = DefaultCommandTimeoutSeconds,
             };
 
             // If you want "empty means no filter", pass DBNull.Value to the SP.
-            cmd.Parameters.Add(new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
-            {
-                Value = string.IsNullOrWhiteSpace(itemId) ? DBNull.Value : itemId
-            });
-            cmd.Parameters.Add(new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
-            {
-                Value = string.IsNullOrWhiteSpace(itemName) ? DBNull.Value : itemName
-            });
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemID", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrWhiteSpace(itemId) ? DBNull.Value : itemId,
+                }
+            );
+            cmd.Parameters.Add(
+                new SqlParameter("@ItemName", SqlDbType.NVarChar, 200)
+                {
+                    Value = string.IsNullOrWhiteSpace(itemName) ? DBNull.Value : itemName,
+                }
+            );
 
             try
             {
                 await cnn.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-                await using var dr = await cmd
-                    .ExecuteReaderAsync(CommandBehavior.CloseConnection, cancellationToken)
+                await using var dr = await cmd.ExecuteReaderAsync(
+                        CommandBehavior.CloseConnection,
+                        cancellationToken
+                    )
                     .ConfigureAwait(false);
 
-                if (!dr.HasRows) return results;
+                if (!dr.HasRows)
+                    return results;
 
                 int oDetailsType = dr.GetOrdinal("DetailsType");
                 int oItemID = dr.GetOrdinal("ItemID");
@@ -2373,14 +2715,20 @@ namespace FinabitAPI.Utilis
 
                 while (await dr.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    results.Add(new DistinctItemNameDto
-                    {
-                        DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
-                        ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
-                        Description = dr.IsDBNull(oDescription) ? null : dr.GetString(oDescription),
-                        ItemName = dr.IsDBNull(oItemNameCol) ? null : dr.GetString(oItemNameCol),
-                        VatValue = dr.IsDBNull(vatValue) ? 0 : dr.GetDecimal(vatValue)
-                    });
+                    results.Add(
+                        new DistinctItemNameDto
+                        {
+                            DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
+                            ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
+                            Description = dr.IsDBNull(oDescription)
+                                ? null
+                                : dr.GetString(oDescription),
+                            ItemName = dr.IsDBNull(oItemNameCol)
+                                ? null
+                                : dr.GetString(oItemNameCol),
+                            VatValue = dr.IsDBNull(vatValue) ? 0 : dr.GetDecimal(vatValue),
+                        }
+                    );
                 }
             }
             catch (Exception ex)
@@ -2391,9 +2739,78 @@ namespace FinabitAPI.Utilis
             return results;
         }
 
+        public async Task<IReadOnlyList<DistinctItemNameDto>> GetLastDistinctItemNamesAsync(
+            int limit = 400,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var results = new List<DistinctItemNameDto>();
+
+            await using var cnn = GetConnection();
+            await using var cmd = new SqlCommand("[dbo].[spGetLastDistinctItemNames_API]", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = DefaultCommandTimeoutSeconds,
+            };
+
+            // Guardrail the limit a bit if you want
+            if (limit <= 0)
+                limit = 1;
+            if (limit > 2000)
+                limit = 2000;
+
+            cmd.Parameters.Add(new SqlParameter("@Limit", SqlDbType.Int) { Value = limit });
+
+            try
+            {
+                await cnn.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+                await using var dr = await cmd.ExecuteReaderAsync(
+                        CommandBehavior.CloseConnection,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+
+                if (!dr.HasRows)
+                    return results;
+
+                int oDetailsType = dr.GetOrdinal("DetailsType");
+                int oItemID = dr.GetOrdinal("ItemID");
+                int oDescription = dr.GetOrdinal("Description");
+                int oItemNameCol = dr.GetOrdinal("ItemName");
+                int oVatValue = dr.GetOrdinal("VatValue");
+
+                while (await dr.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    results.Add(
+                        new DistinctItemNameDto
+                        {
+                            DetailsType = dr.IsDBNull(oDetailsType) ? 0 : dr.GetInt32(oDetailsType),
+                            ItemID = dr.IsDBNull(oItemID) ? null : dr.GetString(oItemID),
+                            Description = dr.IsDBNull(oDescription)
+                                ? null
+                                : dr.GetString(oDescription),
+                            ItemName = dr.IsDBNull(oItemNameCol)
+                                ? null
+                                : dr.GetString(oItemNameCol),
+                            VatValue = dr.IsDBNull(oVatValue) ? 0 : dr.GetDecimal(oVatValue),
+                        }
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // TODO: log ex
+            }
+
+            return results;
+        }
+
         // In your DbAccess class (_dbAccess)
         public async Task<TransactionDetail> SelectTransactionDetailByIDAsync(
-            int id, CancellationToken ct = default)
+            int id,
+            CancellationToken ct = default
+        )
         {
             using (var cnn = GetConnection())
             using (var cmd = new SqlCommand("spTransactionsDetailsByID", cnn))
@@ -2406,7 +2823,7 @@ namespace FinabitAPI.Utilis
                 using (var dr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
                 {
                     if (await dr.ReadAsync(ct).ConfigureAwait(false))
-                        return MapTransactionDetail(dr);   
+                        return MapTransactionDetail(dr);
                 }
             }
             return null;
@@ -2416,14 +2833,23 @@ namespace FinabitAPI.Utilis
         private static T GetVal<T>(IDataRecord r, string col, T def = default!)
         {
             int i;
-            try { i = r.GetOrdinal(col); } catch { return def; }
-            if (i < 0 || r.IsDBNull(i)) return def;
+            try
+            {
+                i = r.GetOrdinal(col);
+            }
+            catch
+            {
+                return def;
+            }
+            if (i < 0 || r.IsDBNull(i))
+                return def;
 
             var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
             var value = r.GetValue(i);
 
             // Handles enums and numeric conversions nicely
-            if (targetType.IsEnum) return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
+            if (targetType.IsEnum)
+                return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
             return (T)Convert.ChangeType(value, targetType);
         }
 
@@ -2433,12 +2859,20 @@ namespace FinabitAPI.Utilis
             foreach (var col in cols)
             {
                 int i;
-                try { i = r.GetOrdinal(col); } catch { continue; }
+                try
+                {
+                    i = r.GetOrdinal(col);
+                }
+                catch
+                {
+                    continue;
+                }
                 if (i >= 0 && !r.IsDBNull(i))
                 {
                     var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
                     var value = r.GetValue(i);
-                    if (targetType.IsEnum) return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
+                    if (targetType.IsEnum)
+                        return (T)Enum.ToObject(targetType, Convert.ToInt32(value));
                     return (T)Convert.ChangeType(value, targetType);
                 }
             }
@@ -2450,7 +2884,14 @@ namespace FinabitAPI.Utilis
             foreach (var col in cols)
             {
                 int i;
-                try { i = r.GetOrdinal(col); } catch { continue; }
+                try
+                {
+                    i = r.GetOrdinal(col);
+                }
+                catch
+                {
+                    continue;
+                }
                 if (i >= 0 && !r.IsDBNull(i))
                 {
                     var s = Convert.ToString(r.GetValue(i)) ?? "";
@@ -2460,7 +2901,6 @@ namespace FinabitAPI.Utilis
             }
             return def;
         }
-
 
         private TransactionDetail MapTransactionDetail(IDataRecord dr)
         {
@@ -2580,16 +3020,21 @@ namespace FinabitAPI.Utilis
                 VleraPaTVSH18 = GetVal<decimal>(dr, "VleraPaTVSH18"),
                 VleraPaTVSH8 = GetVal<decimal>(dr, "VleraPaTVSH8"),
                 Prodhuesi = GetVal<string>(dr, "Prodhuesi", ""),
-                ItemGroup = GetVal<string>(dr, "ItemGroup", "")
+                ItemGroup = GetVal<string>(dr, "ItemGroup", ""),
             };
         }
 
         public async Task<TransactionWithDetailsDto> GetTransactionWithDetails(
-            int transactionId, CancellationToken ct = default)
+            int transactionId,
+            CancellationToken ct = default
+        )
         {
             using var cnn = GetConnection();
             using var cmd = new SqlCommand("dbo.spTransactionWithDetails_API", cnn)
-            { CommandType = CommandType.StoredProcedure, CommandTimeout = 0 };
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0,
+            };
             cmd.Parameters.Add("@TransactionID", SqlDbType.Int).Value = transactionId;
 
             await cnn.OpenAsync(ct).ConfigureAwait(false);
@@ -2598,13 +3043,14 @@ namespace FinabitAPI.Utilis
             Transactions header = null;
             if (await dr.ReadAsync(ct).ConfigureAwait(false))
                 header = MapTransaction(dr);
-            if (header == null) return null;
+            if (header == null)
+                return null;
 
             var details = new List<TransactionDetail>();
             if (await dr.NextResultAsync(ct).ConfigureAwait(false))
             {
                 while (await dr.ReadAsync(ct).ConfigureAwait(false))
-                    details.Add(MapTransactionDetail(dr)); 
+                    details.Add(MapTransactionDetail(dr));
             }
 
             return new TransactionWithDetailsDto { Header = header, Details = details };
@@ -2681,7 +3127,14 @@ namespace FinabitAPI.Utilis
             return cls;
         }
 
-        public void ContractsDocsInsert(DataTable dt, int scanDocMode, string docNo, DateTime? docDate, string subjectName, int userId = -1)
+        public void ContractsDocsInsert(
+            DataTable dt,
+            int scanDocMode,
+            string docNo,
+            DateTime? docDate,
+            string subjectName,
+            int userId = -1
+        )
         {
             using (SqlConnection cnn = GetConnection())
             using (SqlCommand cmd = new SqlCommand("dbo.spContractsDocsInsert", cnn))
@@ -2689,14 +3142,17 @@ namespace FinabitAPI.Utilis
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 var pScanDoc = cmd.Parameters.Add("@ScanDoc", SqlDbType.Structured);
-                pScanDoc.TypeName = "dbo.ContractsDocs";       
+                pScanDoc.TypeName = "dbo.ContractsDocs";
                 pScanDoc.Value = dt ?? throw new ArgumentNullException(nameof(dt));
 
                 cmd.Parameters.Add("@ScanDocMODE", SqlDbType.Int).Value = scanDocMode;
                 cmd.Parameters.Add("@UserID", SqlDbType.Int).Value = userId; // defaults to -1
-                cmd.Parameters.Add("@DocNo", SqlDbType.VarChar, 100).Value = (object?)docNo ?? DBNull.Value;
-                cmd.Parameters.Add("@DocDate", SqlDbType.SmallDateTime).Value = (object?)docDate ?? DBNull.Value;
-                cmd.Parameters.Add("@SubjectName", SqlDbType.NVarChar, 1000).Value = (object?)subjectName ?? DBNull.Value;
+                cmd.Parameters.Add("@DocNo", SqlDbType.VarChar, 100).Value =
+                    (object?)docNo ?? DBNull.Value;
+                cmd.Parameters.Add("@DocDate", SqlDbType.SmallDateTime).Value =
+                    (object?)docDate ?? DBNull.Value;
+                cmd.Parameters.Add("@SubjectName", SqlDbType.NVarChar, 1000).Value =
+                    (object?)subjectName ?? DBNull.Value;
 
                 cnn.Open();
                 cmd.ExecuteNonQuery();

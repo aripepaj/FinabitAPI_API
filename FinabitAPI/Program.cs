@@ -1,4 +1,5 @@
 ﻿using FinabitAPI;
+using FinabitAPI.Clinic.Patient;
 using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Multitenancy;
 using FinabitAPI.Core.Security;
@@ -13,6 +14,7 @@ using FinabitAPI.User;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.IO;
 
@@ -36,7 +38,10 @@ builder.Services.AddCors(o =>
         .AllowCredentials());          
 });
 
-builder.Logging.AddEventLog();
+if (OperatingSystem.IsWindows())
+{
+    builder.Logging.AddEventLog();
+}
 
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)   // base
@@ -81,6 +86,17 @@ builder.Services.AddScoped<FinabitAPI.Hotel.HAccomodation.HAccomodationService>(
 // ExtraCharge services
 builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeRepository>();
 builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeService>();
+
+// Clinic services - EF Core DbContext and services
+builder.Services.AddDbContext<FinabitAPI.Clinic.ClinicDbContext>((serviceProvider, options) =>
+{
+    var dbAccess = serviceProvider.GetRequiredService<DBAccess>();
+    var connectionString = dbAccess.GetConnection().ConnectionString;
+    options.UseSqlServer(connectionString);
+});
+builder.Services.AddScoped<PatientService>();
+builder.Services.AddScoped<FinabitAPI.Clinic.Patient.PatientDynamicFieldService>();
+builder.Services.AddScoped<FinabitAPI.Clinic.Medical.UniversalMedicalService>();
 
 builder.Services.AddControllers();
 
