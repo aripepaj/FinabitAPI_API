@@ -1,4 +1,5 @@
-﻿using FinabitAPI;
+﻿using System.IO;
+using FinabitAPI;
 using FinabitAPI.Clinic.Patient;
 using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Multitenancy;
@@ -16,26 +17,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using System.IO;
 
-var baseDir = AppContext.BaseDirectory;        
-Directory.SetCurrentDirectory(baseDir);          
+var baseDir = AppContext.BaseDirectory;
+Directory.SetCurrentDirectory(baseDir);
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-{
-    ContentRootPath = baseDir,                
-    Args = args
-});
+var builder = WebApplication.CreateBuilder(
+    new WebApplicationOptions { ContentRootPath = baseDir, Args = args }
+);
 
 builder.Host.UseWindowsService();
 
 builder.Services.AddCors(o =>
 {
-    o.AddPolicy("OpenAll", p => p
-        .SetIsOriginAllowed(_ => true) 
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials());          
+    o.AddPolicy(
+        "OpenAll",
+        p => p.SetIsOriginAllowed(_ => true).AllowAnyMethod().AllowAnyHeader().AllowCredentials()
+    );
 });
 
 if (OperatingSystem.IsWindows())
@@ -43,8 +40,8 @@ if (OperatingSystem.IsWindows())
     builder.Logging.AddEventLog();
 }
 
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)   // base
+builder
+    .Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true) // base
     .AddJsonFile("instance.settings.json", optional: true, reloadOnChange: true) // overrides base
     .AddJsonFile("tenants.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables()
@@ -56,12 +53,13 @@ builder.Services.AddScoped<ITenantAccessor, HttpContextTenantAccessor>();
 builder.Services.AddScoped<DBAccess>();
 builder.Services.AddHostedService<DatabaseBootstrapper>();
 builder.Services.AddScoped<UsersRepository>();
+builder.Services.AddScoped<FinabitAPI.Core.User.UsersService>();
 builder.Services.AddScoped<EmployeesRepository>();
 builder.Services.AddScoped<DepartmentRepository>();
 builder.Services.AddScoped<AccountDetailsRepository>();
 builder.Services.AddScoped<ItemRepository>();
 builder.Services.AddScoped<PartnerRepository>();
-builder.Services.AddScoped<IAccountRepository,AccountRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ItemsMasterImportRepository>();
 builder.Services.AddScoped<OptionsRepository>();
 builder.Services.AddScoped<TransactionsRepository>();
@@ -88,12 +86,14 @@ builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeRepository>()
 builder.Services.AddScoped<FinabitAPI.Hotel.ExtraCharge.ExtraChargeService>();
 
 // Clinic services - EF Core DbContext and services
-builder.Services.AddDbContext<FinabitAPI.Clinic.ClinicDbContext>((serviceProvider, options) =>
-{
-    var dbAccess = serviceProvider.GetRequiredService<DBAccess>();
-    var connectionString = dbAccess.GetConnection().ConnectionString;
-    options.UseSqlServer(connectionString);
-});
+builder.Services.AddDbContext<FinabitAPI.Clinic.ClinicDbContext>(
+    (serviceProvider, options) =>
+    {
+        var dbAccess = serviceProvider.GetRequiredService<DBAccess>();
+        var connectionString = dbAccess.GetConnection().ConnectionString;
+        options.UseSqlServer(connectionString);
+    }
+);
 builder.Services.AddScoped<PatientService>();
 builder.Services.AddScoped<FinabitAPI.Clinic.Patient.PatientDynamicFieldService>();
 builder.Services.AddScoped<FinabitAPI.Clinic.Medical.UniversalMedicalService>();
@@ -102,65 +102,98 @@ builder.Services.AddControllers();
 
 const string MasterKeyBase64 = "hZq8fQVt9wqzYQx0c6Pq9r2C7a0rG2q0bqZpH0m1y4g=";
 
-builder.Services.AddSingleton<IPasswordProtector>(
-    _ => new HardcodedKeyPasswordProtector(MasterKeyBase64));
+builder.Services.AddSingleton<IPasswordProtector>(_ => new HardcodedKeyPasswordProtector(
+    MasterKeyBase64
+));
 
-builder.Services
-    .AddAuthentication(options =>
+builder
+    .Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = "Basic";
         options.DefaultChallengeScheme = "Basic";
     })
-    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", null);
+    .AddScheme<
+        Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions,
+        BasicAuthenticationHandler
+    >("Basic", null);
 
 builder.Services.AddAuthorization(options =>
 {
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
 });
 
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Finabit API", Version = "v1" });
 
-    options.AddSecurityDefinition("basic", new OpenApiSecurityScheme
-    {
-        Type = SecuritySchemeType.Http,
-        Scheme = "basic",
-        In = ParameterLocation.Header,
-        Name = "Authorization",
-        Description = "Basic auth. Enter your username and password."
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement {
-        { new OpenApiSecurityScheme {
-            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basic" }
-        }, Array.Empty<string>() }
-    });
+    options.AddSecurityDefinition(
+        "basic",
+        new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "basic",
+            In = ParameterLocation.Header,
+            Name = "Authorization",
+            Description = "Basic auth. Enter your username and password.",
+        }
+    );
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "basic",
+                    },
+                },
+                Array.Empty<string>()
+            },
+        }
+    );
 
-    options.AddSecurityDefinition("tenant", new OpenApiSecurityScheme
-    {
-        Type = SecuritySchemeType.ApiKey,
-        In = ParameterLocation.Header,
-        Name = "X-Tenant-Id",
-        Description = "Tenant identifier (optional; falls back to default). You can also use ?tenant= in query."
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement {
-        { new OpenApiSecurityScheme {
-            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "tenant" }
-        }, Array.Empty<string>() }
-    });
+    options.AddSecurityDefinition(
+        "tenant",
+        new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = "X-Tenant-Id",
+            Description =
+                "Tenant identifier (optional; falls back to default). You can also use ?tenant= in query.",
+        }
+    );
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "tenant",
+                    },
+                },
+                Array.Empty<string>()
+            },
+        }
+    );
 });
 
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-app.Use(async (ctx, next) =>
-{
-    ctx.Response.Headers["X-Pipeline"] = "TenantFirst";
-    await next();
-});
+app.Use(
+    async (ctx, next) =>
+    {
+        ctx.Response.Headers["X-Pipeline"] = "TenantFirst";
+        await next();
+    }
+);
 
 app.UseMiddleware<TenantResolutionMiddleware>();
 
@@ -176,37 +209,60 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapHealthChecks("/health", new HealthCheckOptions
-{
-    ResponseWriter = async (ctx, report) =>
-    {
-        ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
-        await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
-    }
-}).AllowAnonymous();
+app.MapHealthChecks(
+        "/health",
+        new HealthCheckOptions
+        {
+            ResponseWriter = async (ctx, report) =>
+            {
+                ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
+                await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
+            },
+        }
+    )
+    .AllowAnonymous();
 
-app.MapHealthChecks("/test", new HealthCheckOptions
-{
-    ResponseWriter = async (ctx, report) =>
-    {
-        ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
-        await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
-    }
-}).AllowAnonymous();
+app.MapHealthChecks(
+        "/test",
+        new HealthCheckOptions
+        {
+            ResponseWriter = async (ctx, report) =>
+            {
+                ctx.Response.ContentType = System.Net.Mime.MediaTypeNames.Application.Json;
+                await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
+            },
+        }
+    )
+    .AllowAnonymous();
 
-app.MapGet("/dbping", async (DBAccess db) =>
-{
-    try { await db.TestOpenAsync(); return Results.Ok("DB OK"); }
-    catch (Exception ex) { return Results.Problem("DB ERROR: " + ex.Message); }
-}).AllowAnonymous();
+app.MapGet(
+        "/dbping",
+        async (DBAccess db) =>
+        {
+            try
+            {
+                await db.TestOpenAsync();
+                return Results.Ok("DB OK");
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem("DB ERROR: " + ex.Message);
+            }
+        }
+    )
+    .AllowAnonymous();
 
 // shows effective config with provider precedence (helps catch overrides)
-app.MapGet("/config-debug", (IConfiguration cfg) =>
-{
-    if (cfg is IConfigurationRoot root)
-        return Results.Text(root.GetDebugView());
-    return Results.Text("DebugView not available (cfg is not IConfigurationRoot).");
-}).AllowAnonymous();
+app.MapGet(
+        "/config-debug",
+        (IConfiguration cfg) =>
+        {
+            if (cfg is IConfigurationRoot root)
+                return Results.Text(root.GetDebugView());
+            return Results.Text("DebugView not available (cfg is not IConfigurationRoot).");
+        }
+    )
+    .AllowAnonymous();
 
 GlobalRepository.UseDbAccess(app.Services);
 
