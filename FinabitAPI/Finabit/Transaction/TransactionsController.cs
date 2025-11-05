@@ -387,12 +387,17 @@ namespace FinabitAPI.Controllers
 
             ItemLocationRepository itemLocationRepository = new ItemLocationRepository(_dbAccess);
             List<ItemLocation> ILList = itemLocationRepository.SelectAll();
+            // Determine the effective date: use provided TransactionDate if set, otherwise today
+            var effectiveDate =
+                (t.TransactionDate == DateTime.MinValue)
+                    ? DateTime.Now.Date
+                    : t.TransactionDate.Date;
             bool GenerateTranNo = Convert.ToBoolean(SDTable.Rows[0]["GenerateTransactionNo"]);
             if (GenerateTranNo || String.IsNullOrEmpty(transaction.t.TransactionNo))
             {
                 transaction.t.TransactionNo = transactionsService.GetTransactionNo(
                     transaction.t.TransactionTypeID,
-                    t.TransactionDate,
+                    effectiveDate,
                     t.DepartmentID
                 );
             }
@@ -401,9 +406,10 @@ namespace FinabitAPI.Controllers
 
             // dgj 18122011 merret nga serveri direkt data e transaskasionit
 
-            t.TransactionDate = DateTime.Now.Date;
-            t.InvoiceDate = DateTime.Now.Date;
-            t.DueDate = DateTime.Now.Date;
+            // Use the effective date for all transaction date fields
+            t.TransactionDate = effectiveDate;
+            t.InvoiceDate = effectiveDate;
+            t.DueDate = effectiveDate;
             t.TerminID = CommonApp.CheckForInt(GlobalAppData.TermnID);
             // Fix for CS0029: Convert ActionResult<List<string>> to List<string> by accessing the Value property
             List<string> o = GetOptionsList().Value;
@@ -1598,7 +1604,7 @@ namespace FinabitAPI.Controllers
 
         private List<TransactionsDetails> GetTranDetails(XMLTransactions t)
         {
-            ItemsLookup Item = new ItemsLookup();
+            ItemsLookup? Item = null;
 
             List<TransactionsDetails> tranDetails = new List<TransactionsDetails>();
             TransactionsDetails clsDet;
@@ -1616,6 +1622,7 @@ namespace FinabitAPI.Controllers
             foreach (XMLTransactionDetails row in t.Details)
             {
                 decimal VatValue = 18;
+                bool resolvedByAccount = false;
 
                 try
                 {
@@ -1625,7 +1632,10 @@ namespace FinabitAPI.Controllers
                         where i.ItemID == row.ItemID
                         select i
                     ).FirstOrDefault<ItemsLookup>();
-                    VatValue = Item.VATValue;
+                    if (Item != null)
+                    {
+                        VatValue = Item.VATValue;
+                    }
                 }
                 catch { }
 
@@ -1644,7 +1654,30 @@ namespace FinabitAPI.Controllers
 
                 if (Item == null || String.IsNullOrEmpty(Item.ItemID))
                 {
-                    continue;
+                    // fallback: try resolve as account when item not found
+                    try
+                    {
+                        var acc = _dbAccess
+                            .AccountGetByCodeAsync(row.ItemID ?? row.ItemName)
+                            .GetAwaiter()
+                            .GetResult();
+                        if (acc != null)
+                        {
+                            Item = new ItemsLookup
+                            {
+                                ItemID = acc.AccountCode,
+                                ItemName = acc.AccountDescription,
+                                VATValue = VatValue,
+                            };
+                            resolvedByAccount = true;
+                        }
+                    }
+                    catch { }
+
+                    if (Item == null || String.IsNullOrEmpty(Item.ItemID))
+                    {
+                        continue;
+                    }
                 }
 
                 //Users_GetLoginUserByPIN("Item Name pas :" + row.ItemName);
@@ -1670,15 +1703,12 @@ namespace FinabitAPI.Controllers
                 }
 
                 clsDet.TransactionID = t.ID;
-                if (t.TransactionType != 42)
-                {
-                    clsDet.DetailsType = 1; // menaxhohet ndryshe per pagesa!!!
-                }
-                else
-                {
-                    clsDet.DetailsType = 2;
-                }
-                clsDet.ItemID = row.ItemID;
+                // DetailsType = 2 only when resolved by account; keep 1 for items
+                clsDet.DetailsType = resolvedByAccount ? 2 : 1;
+                // Use account code as ItemID only in fallback; preserve original row.ItemID otherwise
+                clsDet.ItemID = resolvedByAccount
+                    ? (Item?.ItemID ?? string.Empty)
+                    : (row.ItemID ?? string.Empty);
 
                 clsDet.ItemName = row.ItemName;
 
@@ -1791,7 +1821,7 @@ namespace FinabitAPI.Controllers
         //}
         private List<TransactionsDetails> GetTranDetails(Transactions t)
         {
-            ItemsLookup Item = new ItemsLookup();
+            ItemsLookup? Item = null;
 
             List<TransactionsDetails> tranDetails = new List<TransactionsDetails>();
             TransactionsDetails clsDet;
@@ -1809,6 +1839,7 @@ namespace FinabitAPI.Controllers
             foreach (TransactionsDetails row in t.TranDetailsColl)
             {
                 decimal VatValue = 18;
+                bool resolvedByAccount = false;
 
                 try
                 {
@@ -1818,7 +1849,10 @@ namespace FinabitAPI.Controllers
                         where i.ItemID == row.ItemID
                         select i
                     ).FirstOrDefault<ItemsLookup>();
-                    VatValue = Item.VATValue;
+                    if (Item != null)
+                    {
+                        VatValue = Item.VATValue;
+                    }
                 }
                 catch { }
 
@@ -1837,7 +1871,30 @@ namespace FinabitAPI.Controllers
 
                 if (Item == null || String.IsNullOrEmpty(Item.ItemID))
                 {
-                    continue;
+                    // fallback: try resolve as account when item not found
+                    try
+                    {
+                        var acc = _dbAccess
+                            .AccountGetByCodeAsync(row.ItemID ?? row.ItemName)
+                            .GetAwaiter()
+                            .GetResult();
+                        if (acc != null)
+                        {
+                            Item = new ItemsLookup
+                            {
+                                ItemID = acc.AccountCode,
+                                ItemName = acc.AccountDescription,
+                                VATValue = VatValue,
+                            };
+                            resolvedByAccount = true;
+                        }
+                    }
+                    catch { }
+
+                    if (Item == null || String.IsNullOrEmpty(Item.ItemID))
+                    {
+                        continue;
+                    }
                 }
 
                 //Users_GetLoginUserByPIN("Item Name pas :" + row.ItemName);
@@ -1863,15 +1920,12 @@ namespace FinabitAPI.Controllers
                 }
 
                 clsDet.TransactionID = t.ID;
-                if (t.TransactionTypeID != 42)
-                {
-                    clsDet.DetailsType = 1; // menaxhohet ndryshe per pagesa!!!
-                }
-                else
-                {
-                    clsDet.DetailsType = 2;
-                }
-                clsDet.ItemID = Item.ItemID;
+                // DetailsType = 2 only when resolved by account; keep 1 for items
+                clsDet.DetailsType = resolvedByAccount ? 2 : 1;
+                // Use account code (from Item) when resolved by account; else keep existing Item.ItemID fallback to row.ItemID
+                clsDet.ItemID = resolvedByAccount
+                    ? (Item?.ItemID ?? string.Empty)
+                    : (Item?.ItemID ?? row.ItemID ?? string.Empty);
 
                 clsDet.ItemName = row.ItemName;
 

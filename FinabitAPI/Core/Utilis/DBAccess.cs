@@ -2,6 +2,7 @@
 using FinabitAPI.Core.Global.dto;
 using FinabitAPI.Core.Multitenancy;
 using FinabitAPI.Core.Security;
+using FinabitAPI.Finabit.Account.dto;
 using FinabitAPI.Finabit.Item.dto;
 using FinabitAPI.Finabit.Items.dto;
 using FinabitAPI.Finabit.Transaction.dto;
@@ -3157,6 +3158,35 @@ namespace FinabitAPI.Utilis
                 cnn.Open();
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        public async Task<AccountLookup> AccountGetByCodeAsync(
+            string accountCode,
+            CancellationToken ct = default
+        )
+        {
+            if (string.IsNullOrWhiteSpace(accountCode))
+                return null;
+
+            using var cnn = GetConnection();
+            using var cmd = new SqlCommand("dbo.spAccountGetByCode_API", cnn)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0,
+            };
+            cmd.Parameters.Add("@AccountCode", SqlDbType.NVarChar, 50).Value = accountCode;
+
+            await cnn.OpenAsync(ct).ConfigureAwait(false);
+            using var dr = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+
+            if (!await dr.ReadAsync(ct).ConfigureAwait(false))
+                return null;
+
+            return new AccountLookup
+            {
+                AccountCode = dr["AccountCode"] as string,
+                AccountDescription = dr["AccountDescription"] as string,
+            };
         }
     }
 }
