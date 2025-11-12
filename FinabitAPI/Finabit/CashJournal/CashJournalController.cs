@@ -8,7 +8,6 @@ using FinabitAPI.Service;
 using FinabitAPI.Utilis;
 using Microsoft.AspNetCore.Mvc;
 
-
 namespace FinabitAPI.Controllers
 {
     [ApiController]
@@ -26,33 +25,58 @@ namespace FinabitAPI.Controllers
         [HttpPost("Line")]
         public IActionResult AddLine([FromBody] JournalLineRequestDto req)
         {
-            if (req == null) return BadRequest("Body required.");
-            if (req.DepartmentID <= 0) return BadRequest("DepartmentID required.");
-            if (string.IsNullOrWhiteSpace(req.CashAccount)) return BadRequest("CashAccount required.");
-            if (req.Amount == 0) return BadRequest("Amount cannot be zero.");
-            if (req.DetailsType is not (3 or 4 or 5 or 6)) return BadRequest("DetailsType must be 3,4,5,6.");
+            if (req == null)
+                return BadRequest("Body required.");
+            if (req.DepartmentID <= 0)
+                return BadRequest("DepartmentID required.");
+            if (string.IsNullOrWhiteSpace(req.CashAccount))
+                return BadRequest("CashAccount required.");
+            if (req.Amount == 0)
+                return BadRequest("Amount cannot be zero.");
+            if (req.DetailsType is not (3 or 4 or 5 or 6))
+                return BadRequest("DetailsType must be 3,4,5,6.");
 
             var date = (req.Date?.Date) ?? DateTime.Today;
 
             var dep = _db.SelectDepartmentByID(new Department { ID = req.DepartmentID });
-            if (dep == null || dep.ID == 0) return BadRequest("Department not found.");
+            if (dep == null || dep.ID == 0)
+                return BadRequest("Department not found.");
 
             var typeId = 25;
-            int headerId = _db.CashJournalIDByCashAccount(req.CashAccount.Trim(), 25, date, dep.CompanyID);
+            int headerId = _db.CashJournalIDByCashAccount(
+                req.CashAccount.Trim(),
+                25,
+                date,
+                dep.CompanyID
+            );
             if (headerId == 0)
             {
                 var txnNo = !string.IsNullOrWhiteSpace(req.TransactionNo)
-                ? req.TransactionNo!.Trim()
-                : transactionsService.GetTransactionNo(typeId, date, req.DepartmentID);
+                    ? req.TransactionNo!.Trim()
+                    : transactionsService.GetTransactionNo(typeId, date, req.DepartmentID);
 
                 var invNo = !string.IsNullOrWhiteSpace(req.InvoiceNo)
-                ? req.InvoiceNo!.Trim()
-                : txnNo;
+                    ? req.InvoiceNo!.Trim()
+                    : txnNo;
 
-                var header = BuildJournalHeader(typeId, dep.CompanyID, req.DepartmentID, date, req.CashAccount, txnNo, invNo);
+                var header = BuildJournalHeader(
+                    typeId,
+                    dep.CompanyID,
+                    req.DepartmentID,
+                    date,
+                    req.CashAccount,
+                    txnNo,
+                    invNo
+                );
                 var svcIns = new TransactionsService(_db);
-                try { header.ErrorID = svcIns.Insert(header, false); }
-                finally { svcIns.CloseGlobalConnection(); }
+                try
+                {
+                    header.ErrorID = svcIns.Insert(header, false);
+                }
+                finally
+                {
+                    svcIns.CloseGlobalConnection();
+                }
 
                 if (header.ErrorID != 0 || header.ID <= 0)
                     return StatusCode(500, "Failed to create cash header.");
@@ -61,7 +85,8 @@ namespace FinabitAPI.Controllers
             }
 
             var hdr = _db.SelectTransactionByID(new Transactions { ID = headerId });
-            if (hdr == null || hdr.ID == 0) return NotFound("Cash header not found.");
+            if (hdr == null || hdr.ID == 0)
+                return NotFound("Cash header not found.");
 
             var det = BuildDetail(req, "Lëvizje arke");
             det.TransactionID = hdr.ID;
@@ -71,31 +96,37 @@ namespace FinabitAPI.Controllers
             try
             {
                 var err = svcUpd.Update(hdr);
-                if (err != 0) return StatusCode(500, $"Update failed. ErrorID={err}");
+                if (err != 0)
+                    return StatusCode(500, $"Update failed. ErrorID={err}");
             }
-            finally { svcUpd.CloseGlobalConnection(); }
+            finally
+            {
+                svcUpd.CloseGlobalConnection();
+            }
 
             var latest = _db.SelectTransactionByID(new Transactions { ID = headerId }) ?? hdr;
 
-            return Ok(new
-            {
-                ok = true,
-                cashJournalId = latest.ID,
-                transactionTypeId = latest.TransactionTypeID,
-                dateUsed = date.ToString("yyyy-MM-dd"),
-                departmentId = latest.DepartmentID,
-                cashAccount = latest.CashAccount,
-                transactionNo = latest.TransactionNo,
-                invoiceNo = latest.InvoiceNo,
-                insertedLines = 1,
-                line = new
+            return Ok(
+                new
                 {
-                    detailsType = det.DetailsType,
-                    signedAmount = det.Value,
-                    description = det.ItemName,
-                    linkedPaymentID = det.PaymentID
+                    ok = true,
+                    cashJournalId = latest.ID,
+                    transactionTypeId = latest.TransactionTypeID,
+                    dateUsed = date.ToString("yyyy-MM-dd"),
+                    departmentId = latest.DepartmentID,
+                    cashAccount = latest.CashAccount,
+                    transactionNo = latest.TransactionNo,
+                    invoiceNo = latest.InvoiceNo,
+                    insertedLines = 1,
+                    line = new
+                    {
+                        detailsType = det.DetailsType,
+                        signedAmount = det.Value,
+                        description = det.ItemName,
+                        linkedPaymentID = det.PaymentID,
+                    },
                 }
-            });
+            );
         }
 
         private string ResolveItemIdFromShifra(JournalLineRequestDto req)
@@ -124,31 +155,45 @@ namespace FinabitAPI.Controllers
         }
 
         [HttpGet("Header")]
-        public IActionResult GetHeader([FromQuery] int departmentId, [FromQuery] string cashAccount, [FromQuery] DateTime date)
+        public IActionResult GetHeader(
+            [FromQuery] int departmentId,
+            [FromQuery] string cashAccount,
+            [FromQuery] DateTime date
+        )
         {
-            if (departmentId <= 0) return BadRequest("departmentId required.");
-            if (string.IsNullOrWhiteSpace(cashAccount)) return BadRequest("cashAccount required.");
+            if (departmentId <= 0)
+                return BadRequest("departmentId required.");
+            if (string.IsNullOrWhiteSpace(cashAccount))
+                return BadRequest("cashAccount required.");
 
             var dep = _db.SelectDepartmentByID(new Department { ID = departmentId });
-            if (dep == null || dep.ID == 0) return BadRequest("Department not found.");
+            if (dep == null || dep.ID == 0)
+                return BadRequest("Department not found.");
 
-            int id = _db.CashJournalIDByCashAccount(cashAccount.Trim(), 25, date.Date, dep.CompanyID);
-            if (id == 0) return NotFound("Header not found.");
+            int id = _db.CashJournalIDByCashAccount(
+                cashAccount.Trim(),
+                25,
+                date.Date,
+                dep.CompanyID
+            );
+            if (id == 0)
+                return NotFound("Header not found.");
             var hdr = _db.SelectTransactionByID(new Transactions { ID = id });
-            if (hdr == null || hdr.ID == 0) return NotFound("Header not found.");
+            if (hdr == null || hdr.ID == 0)
+                return NotFound("Header not found.");
             return Ok(hdr);
         }
 
         private Transactions BuildJournalHeader(
-    int typeId,
-    int companyId,
-    int departmentId,
-    DateTime date,
-    string cashAccount,
-    string transactionNo,
-    string invoiceNo)
+            int typeId,
+            int companyId,
+            int departmentId,
+            DateTime date,
+            string cashAccount,
+            string transactionNo,
+            string invoiceNo
+        )
         {
-
             transactionNo = transactionsService.GetTransactionNo(typeId, date, departmentId);
 
             return new Transactions
@@ -164,28 +209,37 @@ namespace FinabitAPI.Controllers
                 InsBy = GlobalAppData.UserID,
                 Active = true,
                 TransactionNo = transactionNo,
-                InvoiceNo = invoiceNo
+                InvoiceNo = invoiceNo,
             };
         }
 
         private TransactionsDetails BuildDetail(JournalLineRequestDto req, string fallbackDesc)
         {
-            var sign = (req.DetailsType == 3 || req.DetailsType == 6) ? -1m : 1m;
-            var value = Math.Abs(req.Amount) * sign;
+            var value = Math.Abs(req.Amount);
 
-            string desc = string.IsNullOrWhiteSpace(req.Description) ? fallbackDesc : req.Description.Trim();
+            string desc = string.IsNullOrWhiteSpace(req.Description)
+                ? fallbackDesc
+                : req.Description.Trim();
 
             return new TransactionsDetails
             {
                 DetailsType = req.DetailsType,
-                ItemID = ResolveItemIdFromShifra(req.DetailsType, req.PartnerID, req.PartnerCode, req.AccountCode, req.Description),
+                ItemID = ResolveItemIdFromShifra(
+                    req.DetailsType,
+                    req.PartnerID,
+                    req.PartnerCode,
+                    req.AccountCode,
+                    req.Description
+                ),
                 ItemName = desc,
                 Quantity = 1,
                 Price = value,
                 Value = value,
                 Mode = 1,
                 PaymentID = req.PaymentID.GetValueOrDefault(),
-                AccountCode = string.IsNullOrWhiteSpace(req.AccountCode) ? "" : req.AccountCode.Trim()
+                AccountCode = string.IsNullOrWhiteSpace(req.AccountCode)
+                    ? ""
+                    : req.AccountCode.Trim(),
             };
         }
 
@@ -266,7 +320,7 @@ namespace FinabitAPI.Controllers
         //                     PaymentID = l.PaymentID
         //                 };
 
-        //                 var det = BuildDetail(reqLine, "Lëvizje arke"); 
+        //                 var det = BuildDetail(reqLine, "Lëvizje arke");
         //                 det.TransactionID = headerId;
         //                 details.Add(det);
         //             }
@@ -310,13 +364,18 @@ namespace FinabitAPI.Controllers
         [HttpPost("ImportMulti")]
         public IActionResult ImportMulti([FromBody] MixedImportRequest req)
         {
-            if (req == null) return BadRequest("Body required.");
-            if (req.DepartmentID <= 0) return BadRequest("DepartmentID required.");
-            if (req.JournalTypeID is not (24 or 25)) return BadRequest("JournalTypeID must be 24 or 25.");
-            if (req.Lines == null || req.Lines.Count == 0) return BadRequest("Lines required.");
+            if (req == null)
+                return BadRequest("Body required.");
+            if (req.DepartmentID <= 0)
+                return BadRequest("DepartmentID required.");
+            if (req.JournalTypeID is not (24 or 25))
+                return BadRequest("JournalTypeID must be 24 or 25.");
+            if (req.Lines == null || req.Lines.Count == 0)
+                return BadRequest("Lines required.");
 
             var dep = _db.SelectDepartmentByID(new Department { ID = req.DepartmentID });
-            if (dep == null || dep.ID == 0) return BadRequest("Department not found.");
+            if (dep == null || dep.ID == 0)
+                return BadRequest("Department not found.");
 
             var date = (req.Date?.Date) ?? DateTime.Today;
             var resp = new JournalImportResponse();
@@ -326,7 +385,7 @@ namespace FinabitAPI.Controllers
                 var gr = new JournalImportGroupResult
                 {
                     Date = date.ToString("yyyy-MM-dd"),
-                    CashAccount = grp.Key
+                    CashAccount = grp.Key,
                 };
 
                 if (string.IsNullOrWhiteSpace(gr.CashAccount))
@@ -339,7 +398,12 @@ namespace FinabitAPI.Controllers
 
                 try
                 {
-                    int headerId = _db.CashJournalIDByCashAccount(gr.CashAccount, req.JournalTypeID, date, dep.CompanyID);
+                    int headerId = _db.CashJournalIDByCashAccount(
+                        gr.CashAccount,
+                        req.JournalTypeID,
+                        date,
+                        dep.CompanyID
+                    );
                     if (headerId == 0)
                     {
                         var header = new Transactions
@@ -362,12 +426,18 @@ namespace FinabitAPI.Controllers
                             InsBy = GlobalAppData.UserID,
                             CashAccount = gr.CashAccount,
                             TransactionNo = DateTime.Now.ToString("ddMMyyyy"),
-                            InvoiceNo = DateTime.Now.ToString("ddMMyyyy")
+                            InvoiceNo = DateTime.Now.ToString("ddMMyyyy"),
                         };
 
                         var svcIns = new TransactionsService(_db);
-                        try { header.ErrorID = svcIns.Insert(header, false); }
-                        finally { svcIns.CloseGlobalConnection(); }
+                        try
+                        {
+                            header.ErrorID = svcIns.Insert(header, false);
+                        }
+                        finally
+                        {
+                            svcIns.CloseGlobalConnection();
+                        }
 
                         if (header.ErrorID != 0 || header.ID <= 0)
                         {
@@ -391,7 +461,8 @@ namespace FinabitAPI.Controllers
                     var details = new List<TransactionsDetails>();
                     foreach (var l in grp)
                     {
-                        if (l.DetailsType is not (3 or 4 or 5 or 6)) continue;
+                        if (l.DetailsType is not (3 or 4 or 5 or 6))
+                            continue;
                         var reqLine = new JournalLineRequestDto
                         {
                             DepartmentID = req.DepartmentID,
@@ -403,11 +474,12 @@ namespace FinabitAPI.Controllers
                             PartnerID = l.PartnerID,
                             PartnerCode = l.PartnerCode,
                             AccountCode = l.AccountCode,
-                            PaymentID = l.PaymentID
+                            PaymentID = l.PaymentID,
                         };
-                        var det = (req.JournalTypeID == 24)
-                            ? BuildDetail(reqLine, "Lëvizje banke")
-                            : BuildDetail(reqLine, "Lëvizje arke");
+                        var det =
+                            (req.JournalTypeID == 24)
+                                ? BuildDetail(reqLine, "Lëvizje banke")
+                                : BuildDetail(reqLine, "Lëvizje arke");
 
                         det.TransactionID = headerId;
                         details.Add(det);
@@ -435,7 +507,10 @@ namespace FinabitAPI.Controllers
                             continue;
                         }
                     }
-                    finally { svcUpd.CloseGlobalConnection(); }
+                    finally
+                    {
+                        svcUpd.CloseGlobalConnection();
+                    }
 
                     gr.HeaderID = headerId;
                     gr.InsertedLines = details.Count;
@@ -454,12 +529,12 @@ namespace FinabitAPI.Controllers
         }
 
         public static string ResolveItemIdFromShifra(
-           int detailsType,
-           int? partnerId,
-           string? partnerCode,
-           string? accountCode,
-           string? description
-       )
+            int detailsType,
+            int? partnerId,
+            string? partnerCode,
+            string? accountCode,
+            string? description
+        )
         {
             if (detailsType == 3 || detailsType == 4)
             {
@@ -482,14 +557,13 @@ namespace FinabitAPI.Controllers
             return !string.IsNullOrWhiteSpace(description) ? description.Trim() : "Lëvizje";
         }
 
-
         [HttpPost("Lines")]
         public IActionResult AddLines([FromBody] List<JournalLineRequestDto> lines)
         {
             if (lines == null || lines.Count == 0)
                 return BadRequest("At least one line is required.");
 
-            const int typeId = 25; 
+            const int typeId = 25;
             var results = new List<object>();
             int okCount = 0;
 
@@ -499,27 +573,62 @@ namespace FinabitAPI.Controllers
 
                 if (req == null)
                 {
-                    results.Add(new { index = i, ok = false, error = "Body required." });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = "Body required.",
+                        }
+                    );
                     continue;
                 }
                 if (req.DepartmentID <= 0)
                 {
-                    results.Add(new { index = i, ok = false, error = "DepartmentID required." });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = "DepartmentID required.",
+                        }
+                    );
                     continue;
                 }
                 if (string.IsNullOrWhiteSpace(req.CashAccount))
                 {
-                    results.Add(new { index = i, ok = false, error = "CashAccount required." });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = "CashAccount required.",
+                        }
+                    );
                     continue;
                 }
                 if (req.Amount == 0)
                 {
-                    results.Add(new { index = i, ok = false, error = "Amount cannot be zero." });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = "Amount cannot be zero.",
+                        }
+                    );
                     continue;
                 }
                 if (req.DetailsType is not (3 or 4 or 5 or 6))
                 {
-                    results.Add(new { index = i, ok = false, error = "DetailsType must be 3,4,5,6." });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = "DetailsType must be 3,4,5,6.",
+                        }
+                    );
                     continue;
                 }
 
@@ -530,13 +639,25 @@ namespace FinabitAPI.Controllers
                     var dep = _db.SelectDepartmentByID(new Department { ID = req.DepartmentID });
                     if (dep == null || dep.ID == 0)
                     {
-                        results.Add(new { index = i, ok = false, error = "Department not found." });
+                        results.Add(
+                            new
+                            {
+                                index = i,
+                                ok = false,
+                                error = "Department not found.",
+                            }
+                        );
                         continue;
                     }
 
                     var cashAcc = req.CashAccount.Trim();
 
-                    int headerId = _db.CashJournalIDByCashAccount(cashAcc, typeId, date, dep.CompanyID);
+                    int headerId = _db.CashJournalIDByCashAccount(
+                        cashAcc,
+                        typeId,
+                        date,
+                        dep.CompanyID
+                    );
                     if (headerId == 0)
                     {
                         var txnNo = !string.IsNullOrWhiteSpace(req.TransactionNo)
@@ -547,15 +668,36 @@ namespace FinabitAPI.Controllers
                             ? req.InvoiceNo!.Trim()
                             : txnNo;
 
-                        var header = BuildJournalHeader(typeId, dep.CompanyID, req.DepartmentID, date, cashAcc, txnNo, invNo);
+                        var header = BuildJournalHeader(
+                            typeId,
+                            dep.CompanyID,
+                            req.DepartmentID,
+                            date,
+                            cashAcc,
+                            txnNo,
+                            invNo
+                        );
 
                         var svcIns = new TransactionsService(_db);
-                        try { header.ErrorID = svcIns.Insert(header, false); }
-                        finally { svcIns.CloseGlobalConnection(); }
+                        try
+                        {
+                            header.ErrorID = svcIns.Insert(header, false);
+                        }
+                        finally
+                        {
+                            svcIns.CloseGlobalConnection();
+                        }
 
                         if (header.ErrorID != 0 || header.ID <= 0)
                         {
-                            results.Add(new { index = i, ok = false, error = "Failed to create cash header." });
+                            results.Add(
+                                new
+                                {
+                                    index = i,
+                                    ok = false,
+                                    error = "Failed to create cash header.",
+                                }
+                            );
                             continue;
                         }
 
@@ -565,7 +707,14 @@ namespace FinabitAPI.Controllers
                     var hdr = _db.SelectTransactionByID(new Transactions { ID = headerId });
                     if (hdr == null || hdr.ID == 0)
                     {
-                        results.Add(new { index = i, ok = false, error = "Cash header not found." });
+                        results.Add(
+                            new
+                            {
+                                index = i,
+                                ok = false,
+                                error = "Cash header not found.",
+                            }
+                        );
                         continue;
                     }
 
@@ -580,7 +729,14 @@ namespace FinabitAPI.Controllers
                         var err = svcUpd.Update(hdr);
                         if (err != 0)
                         {
-                            results.Add(new { index = i, ok = false, error = $"Update failed. ErrorID={err}" });
+                            results.Add(
+                                new
+                                {
+                                    index = i,
+                                    ok = false,
+                                    error = $"Update failed. ErrorID={err}",
+                                }
+                            );
                             continue;
                         }
                     }
@@ -589,45 +745,56 @@ namespace FinabitAPI.Controllers
                         svcUpd.CloseGlobalConnection();
                     }
 
-                    var latest = _db.SelectTransactionByID(new Transactions { ID = headerId }) ?? hdr;
-                    
-                    results.Add(new
-                    {
-                        index = i,
-                        ok = true,
-                        cashJournalId = latest.ID,
-                        transactionTypeId = latest.TransactionTypeID,
-                        dateUsed = date.ToString("yyyy-MM-dd"),
-                        departmentId = latest.DepartmentID,
-                        cashAccount = latest.CashAccount,
-                        transactionNo = latest.TransactionNo,
-                        invoiceNo = latest.InvoiceNo,
-                        insertedLines = 1,
-                        line = new
+                    var latest =
+                        _db.SelectTransactionByID(new Transactions { ID = headerId }) ?? hdr;
+
+                    results.Add(
+                        new
                         {
-                            detailsType = det.DetailsType,
-                            signedAmount = det.Value,
-                            description = det.ItemName,
-                            linkedPaymentID = det.PaymentID
+                            index = i,
+                            ok = true,
+                            cashJournalId = latest.ID,
+                            transactionTypeId = latest.TransactionTypeID,
+                            dateUsed = date.ToString("yyyy-MM-dd"),
+                            departmentId = latest.DepartmentID,
+                            cashAccount = latest.CashAccount,
+                            transactionNo = latest.TransactionNo,
+                            invoiceNo = latest.InvoiceNo,
+                            insertedLines = 1,
+                            line = new
+                            {
+                                detailsType = det.DetailsType,
+                                signedAmount = det.Value,
+                                description = det.ItemName,
+                                linkedPaymentID = det.PaymentID,
+                            },
                         }
-                    });
+                    );
 
                     okCount++;
                 }
                 catch (Exception ex)
                 {
-                    results.Add(new { index = i, ok = false, error = ex.Message });
+                    results.Add(
+                        new
+                        {
+                            index = i,
+                            ok = false,
+                            error = ex.Message,
+                        }
+                    );
                 }
             }
 
-            return Ok(new
-            {
-                ok = okCount == results.Count,
-                insertedLines = okCount,
-                total = results.Count,
-                results
-            });
+            return Ok(
+                new
+                {
+                    ok = okCount == results.Count,
+                    insertedLines = okCount,
+                    total = results.Count,
+                    results,
+                }
+            );
         }
-
     }
 }
