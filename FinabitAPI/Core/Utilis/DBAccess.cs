@@ -2308,6 +2308,8 @@ namespace FinabitAPI.Utilis
             int sourceId,
             DateTime newDate,
             string? newTransactionNo,
+            string? memo,
+            int userId,
             CancellationToken ct = default
         )
         {
@@ -2323,10 +2325,15 @@ namespace FinabitAPI.Utilis
                 new SqlParameter("@NewDate", SqlDbType.Date) { Value = newDate.Date }
             );
 
-            // Match the NVARCHAR length to your table's TransactionNo length (adjust 50 if different)
             var p = new SqlParameter("@NewTransactionNo", SqlDbType.NVarChar, 50);
             p.Value = (object?)newTransactionNo ?? DBNull.Value;
             cmd.Parameters.Add(p);
+
+            var pMemo = new SqlParameter("@Memo", SqlDbType.NVarChar, 500);
+            pMemo.Value = (object?)memo ?? DBNull.Value;
+            cmd.Parameters.Add(pMemo);
+
+            cmd.Parameters.Add(new SqlParameter("@UserID", SqlDbType.Int) { Value = userId });
 
             var obj = await cmd.ExecuteScalarAsync(ct);
             if (obj == null || obj == DBNull.Value)

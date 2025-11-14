@@ -756,6 +756,10 @@ namespace FinabitAPI.Controllers
                 .GetTransactionNo(src.TransactionTypeID, body.NewDate, src.DepartmentID)
                 .ToString();
 
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+                return StatusCode(401, "UserId not available.");
+
             int newId;
             try
             {
@@ -763,6 +767,8 @@ namespace FinabitAPI.Controllers
                     body.TransactionId,
                     body.NewDate,
                     newTransactionNo,
+                    body.Memo,
+                    userId,
                     ct
                 );
             }
