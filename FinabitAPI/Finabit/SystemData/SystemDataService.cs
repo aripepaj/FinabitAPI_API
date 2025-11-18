@@ -1,6 +1,7 @@
 using System.Data;
-using Microsoft.Extensions.Logging;
 using FinabitAPI.Finabit.SystemData;
+using FinabitAPI.Finabit.SystemInfo.dto;
+using Microsoft.Extensions.Logging;
 
 namespace FinabitAPI.Finabit.SystemData
 {
@@ -53,6 +54,20 @@ namespace FinabitAPI.Finabit.SystemData
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting system data table");
+                throw;
+            }
+        }
+
+        public SystemBaseInfo getAllData()
+        {
+            try
+            {
+                _logger.LogInformation("Getting system base info");
+                return _repository.GetSystemBasicInfo();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting system base info");
                 throw;
             }
         }

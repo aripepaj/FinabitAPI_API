@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using FinabitAPI.Finabit.SystemData;
+using FinabitAPI.Finabit.SystemInfo.dto;
 using FinabitAPI.Utilis;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FinabitAPI.Finabit.SystemData
 {
@@ -48,7 +49,14 @@ namespace FinabitAPI.Finabit.SystemData
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting system data");
-                return StatusCode(500, new { message = "An error occurred while getting system data", error = ex.Message });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message = "An error occurred while getting system data",
+                        error = ex.Message,
+                    }
+                );
             }
         }
 
@@ -67,7 +75,14 @@ namespace FinabitAPI.Finabit.SystemData
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting system data for transaction");
-                return StatusCode(500, new { message = "An error occurred while getting system data for transaction", error = ex.Message });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message = "An error occurred while getting system data for transaction",
+                        error = ex.Message,
+                    }
+                );
             }
         }
 
@@ -87,8 +102,26 @@ namespace FinabitAPI.Finabit.SystemData
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting system data table");
-                return StatusCode(500, new { message = "An error occurred while getting system data table", error = ex.Message });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message = "An error occurred while getting system data table",
+                        error = ex.Message,
+                    }
+                );
             }
+        }
+
+        [HttpGet("getAll")]
+        public ActionResult<SystemBaseInfo> GetBasicSystemInfo()
+        {
+            var info = _service.getAllData();
+
+            if (info == null)
+                return NotFound();
+
+            return Ok(info);
         }
     }
 }

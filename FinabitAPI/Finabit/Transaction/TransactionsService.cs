@@ -5,9 +5,9 @@
 //-- =============================================
 
 using System.Data;
-using FinabitAPI.Utilis;
 using FinabitAPI.Finabit.Transaction;
 using FinabitAPI.Finabit.Transaction.dto;
+using FinabitAPI.Utilis;
 
 namespace FinabitAPI.Service
 {
@@ -15,27 +15,29 @@ namespace FinabitAPI.Service
     {
         public TransactionsRepository repository = new TransactionsRepository();
         private readonly DBAccess _dbAccess;
+
         public TransactionsService(DBAccess dbAccess)
         {
             _dbAccess = dbAccess;
             repository = new TransactionsRepository(_dbAccess, true);
         }
-       
+
         public int ErrorID
         {
             get { return repository.ErrorID; }
             set { repository.ErrorID = value; }
         }
-        #region Insert
-        
 
-        public int Insert(Transactions cls,bool fillItemLotTable)
+        #region Insert
+
+
+        public int Insert(Transactions cls, bool fillItemLotTable)
         {
             //repository = new DALTransactions(true);
             repository.Insert(cls);
             if (repository.ErrorID == 0)
             {
-               // Users mUser = BLLUsers.GetLoginUserByPDAPIN("Pas insertit te transaksionit");
+                // Users mUser = BLLUsers.GetLoginUserByPDAPIN("Pas insertit te transaksionit");
 
                 TransactionsDetailsService bllDet = new TransactionsDetailsService(repository);
                 //BLLUsers.GetLoginUserByPDAPIN("Pas insertit te transaksionit 2");
@@ -44,7 +46,7 @@ namespace FinabitAPI.Service
                     foreach (TransactionsDetails details in cls.TranDetailsColl)
                     {
                         details.TransactionID = cls.ID;
-                        bllDet.Insert(details,fillItemLotTable);
+                        bllDet.Insert(details, fillItemLotTable);
                         //BLLUsers.GetLoginUserByPDAPIN("Pas insertit te detajit 2");
                         if (repository.ErrorID != 0)
                         {
@@ -57,7 +59,13 @@ namespace FinabitAPI.Service
                         {
                             if (cls.TransactionTypeID != 36)
                             {
-                                repository.UpdateAveragePrice(details.ItemID, cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                                repository.UpdateAveragePrice(
+                                    details.ItemID,
+                                    cls.DepartmentID,
+                                    cls.ID,
+                                    cls.TransactionDate,
+                                    cls.InsBy
+                                );
                                 if (repository.ErrorID != 0)
                                 {
                                     //cls.ErrorDescription = details.ErrorDescription; // RmsString.getString(BLLGlobal.ErrorID.ToStrijng())
@@ -69,9 +77,18 @@ namespace FinabitAPI.Service
                             {
                                 try
                                 {
-                                    repository.UpdateAveragePrice(details.ItemID, cls.InternalDepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                                    repository.UpdateAveragePrice(
+                                        details.ItemID,
+                                        cls.InternalDepartmentID,
+                                        cls.ID,
+                                        cls.TransactionDate,
+                                        cls.InsBy
+                                    );
                                 }
-                                catch { repository.ErrorID = 0; }// mos te nderpritet sinkronizimi nese ka gabim 
+                                catch
+                                {
+                                    repository.ErrorID = 0;
+                                } // mos te nderpritet sinkronizimi nese ka gabim
                                 repository.ErrorID = 0;
                             }
                         }
@@ -82,12 +99,7 @@ namespace FinabitAPI.Service
                         }
                     }
 
-
-
-
                     bllDet.UpdateTranDetFields(cls.ID);
-
-
 
                     if (repository.ErrorID == -1)
                     {
@@ -100,8 +112,6 @@ namespace FinabitAPI.Service
                 {
                     return repository.ErrorID;
                 }
-
-                
 
                 // krijimi automatik i normativave
                 if (cls.CreateAutomaticRealization)
@@ -133,6 +143,9 @@ namespace FinabitAPI.Service
                 //}
 
                 // azhurimi i transaksioneve
+
+                repository.CreateAutomaticJournals(cls.ID, cls.InsBy, 0);
+
                 repository.CreateBatchJournals(cls.InsBy);
                 if (repository.ErrorID != 0)
                 {
@@ -159,7 +172,7 @@ namespace FinabitAPI.Service
                 int ErrorID = Delete(cls);
                 if (ErrorID == 0)
                 {
-                    Insert(cls,false);
+                    Insert(cls, false);
                 }
                 return ErrorID;
             }
@@ -176,7 +189,7 @@ namespace FinabitAPI.Service
                         switch (details.Mode)
                         {
                             case 1:
-                                bllDet.Insert(details,false);
+                                bllDet.Insert(details, false);
                                 break;
                             case 2:
                                 bllDet.Update(details);
@@ -184,7 +197,8 @@ namespace FinabitAPI.Service
                             case 3:
                                 if (details.PaymentID == 0)
                                 {
-                                    TransactionsDetailsRepository dd = new TransactionsDetailsRepository(repository);
+                                    TransactionsDetailsRepository dd =
+                                        new TransactionsDetailsRepository(repository);
                                     TransactionsDetails td = dd.SelectByIDTran(details);
                                     details.PaymentID = td.PaymentID;
                                 }
@@ -275,12 +289,15 @@ namespace FinabitAPI.Service
             TransactionsDetailsRepository dd = new TransactionsDetailsRepository(dal);
             DataTable bd = dd.GetDetailsForPayments(cls.ID);
 
-
             dal.Delete(cls);
             if (dal.ErrorID == 0)
             {
                 TransactionsDetailsService bllDet = new TransactionsDetailsService(dal);
-                if (cls.TranDetailsColl != null && cls.TranDetailsColl.Count > 0 && cls.TransactionTypeID != 11)
+                if (
+                    cls.TranDetailsColl != null
+                    && cls.TranDetailsColl.Count > 0
+                    && cls.TransactionTypeID != 11
+                )
                 {
                     bllDet.DeleteALL(cls.TranDetailsColl[0]);
                     if (dal.ErrorID != 0)
@@ -288,7 +305,6 @@ namespace FinabitAPI.Service
                         cls.ErrorDescription = cls.TranDetailsColl[0].ErrorDescription;
                         return dal.ErrorID;
                     }
-
                 }
 
                 foreach (DataRow dr in bd.Rows)
@@ -300,7 +316,13 @@ namespace FinabitAPI.Service
 
                     if (int.Parse(dr["DetailsType"].ToString()) == 1)
                     {
-                        dal.UpdateAveragePrice(dr["ItemID"].ToString(), cls.DepartmentID, cls.ID, cls.TransactionDate, cls.InsBy);
+                        dal.UpdateAveragePrice(
+                            dr["ItemID"].ToString(),
+                            cls.DepartmentID,
+                            cls.ID,
+                            cls.TransactionDate,
+                            cls.InsBy
+                        );
                         if (dal.ErrorID != 0)
                         {
                             //cls.ErrorDescription = details.ErrorDescription; // RmsString.getString(BLLGlobal.ErrorID.ToStrijng())
@@ -324,19 +346,22 @@ namespace FinabitAPI.Service
                     }
                 }
 
-
                 // krijimi automatik i normativave
                 if (cls.CreateAutomaticRealization)
                 {
-                    dal.CreateAutomaticRealization(cls.ID, 3, cls.ReferenceID, cls.DepartmentID, cls.InsBy);
+                    dal.CreateAutomaticRealization(
+                        cls.ID,
+                        3,
+                        cls.ReferenceID,
+                        cls.DepartmentID,
+                        cls.InsBy
+                    );
                     if (dal.ErrorID != 0)
                     {
                         cls.ErrorDescription = cls.ErrorDescription;
                         return dal.ErrorID;
                     }
                 }
-
-
 
                 // azhurimi i cmimeve te asemblimeve
                 dal.UpdateAveragePriceForAssembly(cls.InsBy);
@@ -361,7 +386,13 @@ namespace FinabitAPI.Service
 
         #region SelectAll
 
-        public static List<Transactions> SelectAll(string FromDate, string ToDate, bool Active, string Type, string DepartmentID)
+        public static List<Transactions> SelectAll(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.SelectAll(FromDate, ToDate, Active, Type, DepartmentID);
@@ -413,9 +444,21 @@ namespace FinabitAPI.Service
 
         #region SelectAllTogether
 
-        public static List<Transactions> SelectAllTogether(string FromDate, string ToDate, bool Active, string Type, string DepartmentID)
+        public static List<Transactions> SelectAllTogether(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID
+        )
         {
-            List<Transactions> tParent = new TransactionsRepository().SelectAll(FromDate, ToDate, Active, Type, DepartmentID);
+            List<Transactions> tParent = new TransactionsRepository().SelectAll(
+                FromDate,
+                ToDate,
+                Active,
+                Type,
+                DepartmentID
+            );
             //List<TransactionsDetails> tChild = BLLTransactionsDetails.SelectAll();
 
             //foreach (Transactions tran in tParent)
@@ -430,12 +473,26 @@ namespace FinabitAPI.Service
 
         #region GetTransaction
 
-        public static DataTable GetTransaction(string FromDate, string ToDate, bool Active, string Type, string DepartmentID,int UserID)
+        public static DataTable GetTransaction(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID,
+            int UserID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             DataTable dt;
 
-            if (Type == "Blerje" || Type == "Shitje" || Type == "Profature Sh" || Type == "Profature B" || Type == "KthimB" || Type == "KthimS")
+            if (
+                Type == "Blerje"
+                || Type == "Shitje"
+                || Type == "Profature Sh"
+                || Type == "Profature B"
+                || Type == "KthimB"
+                || Type == "KthimS"
+            )
             {
                 dt = dal.GetTransactionForAll(FromDate, ToDate, Active, Type, DepartmentID, UserID);
             }
@@ -443,16 +500,20 @@ namespace FinabitAPI.Service
             {
                 dt = dal.GetTransaction(FromDate, ToDate, Active, Type, DepartmentID, UserID);
             }
-         
-
 
             return dt;
         }
-        public static DataTable GetOrdersList(string FromDate, string ToDate, string DepartmentID, int UserID)
+
+        public static DataTable GetOrdersList(
+            string FromDate,
+            string ToDate,
+            string DepartmentID,
+            int UserID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             DataTable dt;
-            dt = dal.GetOrdersList(FromDate, ToDate,  DepartmentID, UserID);
+            dt = dal.GetOrdersList(FromDate, ToDate, DepartmentID, UserID);
 
             return dt;
         }
@@ -460,7 +521,12 @@ namespace FinabitAPI.Service
 
         #region RegistrationsList
 
-        public static DataTable RegistrationsList(string FromDate, string ToDate, bool Active, string DepartmentID)
+        public static DataTable RegistrationsList(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string DepartmentID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.RegistrationsList(FromDate, ToDate, Active, DepartmentID);
@@ -470,10 +536,15 @@ namespace FinabitAPI.Service
 
         #region GetRegistrations
 
-        public static DataTable GetRegistrations(string FromDate, string ToDate, string DepartmentID,int UserID)
+        public static DataTable GetRegistrations(
+            string FromDate,
+            string ToDate,
+            string DepartmentID,
+            int UserID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.GetRegistrations(FromDate, ToDate, DepartmentID,UserID);
+            return dal.GetRegistrations(FromDate, ToDate, DepartmentID, UserID);
         }
 
         #endregion
@@ -490,17 +561,27 @@ namespace FinabitAPI.Service
 
         #region GetImport
 
-        public static DataTable GetImport(string FromDate, string ToDate, string DepartmentID, bool Active)
+        public static DataTable GetImport(
+            string FromDate,
+            string ToDate,
+            string DepartmentID,
+            bool Active
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.GetImport(FromDate, ToDate,DepartmentID, Active);
+            return dal.GetImport(FromDate, ToDate, DepartmentID, Active);
         }
 
         #endregion
 
         #region GetTransactionPayments
 
-        public static DataTable GetTransactionPayments(string FromDate, string ToDate, bool Active, string Type)
+        public static DataTable GetTransactionPayments(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.GetTransactionPayments(FromDate, ToDate, Active, Type);
@@ -518,7 +599,6 @@ namespace FinabitAPI.Service
 
         #endregion
 
-        
 
         #region GetTransactionNo
 
@@ -611,20 +691,28 @@ namespace FinabitAPI.Service
 
         #region UpdateAveragePriceForGroup
 
-        public static void UpdateAveragePriceForGroup(DataTable Items, DateTime TransactionDate, int UserID)
+        public static void UpdateAveragePriceForGroup(
+            DataTable Items,
+            DateTime TransactionDate,
+            int UserID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            dal.UpdateAveragePriceForGroup(Items, TransactionDate,UserID);
+            dal.UpdateAveragePriceForGroup(Items, TransactionDate, UserID);
         }
 
         #endregion
 
         #region TransactionsByTerminForPOS
 
-        public static DataTable TransactionsByTerminForPOS(DateTime FromDate, DateTime ToDate, int TerminID)
+        public static DataTable TransactionsByTerminForPOS(
+            DateTime FromDate,
+            DateTime ToDate,
+            int TerminID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.TransactionsByTerminForPOS(FromDate,ToDate,TerminID);
+            return dal.TransactionsByTerminForPOS(FromDate, ToDate, TerminID);
         }
 
         #endregion
@@ -681,10 +769,15 @@ namespace FinabitAPI.Service
 
         #region UpdateNewCash
 
-        public static DataTable UpdateNewCash(int DetailsID, int OldTransactionID, int NewTransactionID, int userID)
+        public static DataTable UpdateNewCash(
+            int DetailsID,
+            int OldTransactionID,
+            int NewTransactionID,
+            int userID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.UpdateNewCash(DetailsID,OldTransactionID, NewTransactionID, userID);
+            return dal.UpdateNewCash(DetailsID, OldTransactionID, NewTransactionID, userID);
         }
 
         #endregion
@@ -731,7 +824,11 @@ namespace FinabitAPI.Service
 
         public static int CashJournalIDByCashAccount(string CashAccount, int TypeID, int CompanyID)
         {
-            return TransactionsRepository.CashJournalIDByCashAccount(CashAccount, TypeID, CompanyID);
+            return TransactionsRepository.CashJournalIDByCashAccount(
+                CashAccount,
+                TypeID,
+                CompanyID
+            );
         }
 
         public void UpdateJournalStatus(Transactions cls)
@@ -752,12 +849,17 @@ namespace FinabitAPI.Service
 
         #region ReRealisation
 
-        public static void ReRealisation(DataTable Transactions, DateTime FromDate, DateTime ToDate,int UserID)
+        public static void ReRealisation(
+            DataTable Transactions,
+            DateTime FromDate,
+            DateTime ToDate,
+            int UserID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
-            dal.ReRealisation(Transactions, FromDate, ToDate,UserID);
+            dal.ReRealisation(Transactions, FromDate, ToDate, UserID);
         }
-        
+
         #endregion
 
         #region GetTransatcionsByItemID
@@ -802,8 +904,8 @@ namespace FinabitAPI.Service
         public static DataTable GetDetailsFromDoc(int TransactionID)
         {
             return TransactionsRepository.GetDetailsFromDoc(TransactionID);
-
         }
+
         #region GetRegistrationsForPeriod
 
         public static DataTable GetRegistrationsForPeriod(DateTime FromDate, DateTime ToDate)
@@ -872,32 +974,41 @@ namespace FinabitAPI.Service
             TransactionsRepository dal = new TransactionsRepository();
             return dal.GetTarnsactionIDIfExist(TranNo, partnerID, TranDate);
         }
+
         #region CheckTransactionIfExists
 
         public static bool CheckTransactionIfExists(Transactions cls)
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.CheckTransactionIfExists(cls);
-
         }
-        public static List<XMLTransactionDetails> M_GetSalesArticles(DateTime FromDate, DateTime ToDate, int DepartmentID)
+
+        public static List<XMLTransactionDetails> M_GetSalesArticles(
+            DateTime FromDate,
+            DateTime ToDate,
+            int DepartmentID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.M_GetSalesArticles(FromDate, ToDate, DepartmentID);
         }
         #endregion
-        
+
         #region GetInvoiceNo
 
-        public static string GetInvoiceNo(int TransactionType, DateTime Date,int DepartmentID)
+        public static string GetInvoiceNo(int TransactionType, DateTime Date, int DepartmentID)
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.GetInvoiceNo(TransactionType, Date,DepartmentID);
+            return dal.GetInvoiceNo(TransactionType, Date, DepartmentID);
         }
 
         #endregion
 
-        public static string GetTransactionNo_M(int TransactionType, DateTime Date, int DepartmentID)
+        public static string GetTransactionNo_M(
+            int TransactionType,
+            DateTime Date,
+            int DepartmentID
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.GetTransactionNo_M(TransactionType, Date, DepartmentID);
@@ -914,10 +1025,15 @@ namespace FinabitAPI.Service
         public static int GetTranID(int Type, int PartnerID, string TransactionNo, string tranDate)
         {
             TransactionsRepository dal = new TransactionsRepository();
-            return dal.GetTranID(Type, PartnerID,TransactionNo,tranDate);
+            return dal.GetTranID(Type, PartnerID, TransactionNo, tranDate);
         }
 
-        public static int GetTranID_NotaKreditore(int Type, int PartnerID, string TransactionNo, string tranDate)
+        public static int GetTranID_NotaKreditore(
+            int Type,
+            int PartnerID,
+            string TransactionNo,
+            string tranDate
+        )
         {
             TransactionsRepository dal = new TransactionsRepository();
             return dal.GetTranID_NotaKreditore(Type, PartnerID, TransactionNo, tranDate);
@@ -929,19 +1045,19 @@ namespace FinabitAPI.Service
             TransactionsRepository dal = new TransactionsRepository();
             return dal.M_GetSalesArticles_F(FlightNo);
         }
+
         public static XMLTransactions M_GetXMLTransactionByID(int TransactionID)
-        { 
-            TransactionsRepository dal=new TransactionsRepository();
+        {
+            TransactionsRepository dal = new TransactionsRepository();
             return dal.SelectXMLTransactionByID(TransactionID);
         }
+
         public static List<XMLTransactionDetails> M_GetDetailsByTranID(int TransactionID)
         {
             TransactionsDetailsRepository dal = new TransactionsDetailsRepository();
             return dal.GetXMLDetailsList(TransactionID);
         }
 
-
-       
         public static void UpdateIsPrintFiscalInvoiceAsTrueByTranID(int TransactionsID)
         {
             TransactionsRepository dal = new TransactionsRepository();
@@ -962,7 +1078,7 @@ namespace FinabitAPI.Service
         public static int OrdersBatchInsert(DataTable Orders)
         {
             TransactionsRepository dal = new TransactionsRepository();
-             return dal.OrdersBatchInsert(Orders);
+            return dal.OrdersBatchInsert(Orders);
         }
-    }  
+    }
 }

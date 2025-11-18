@@ -4,11 +4,11 @@
 //-- Description:	CRUD for Table tblTransactions
 //-- =============================================
 using System.Data;
-using Microsoft.Data.SqlClient;
-using FinabitAPI.Finabit.Transaction.dto;
 using FinabitAPI.Core.Global;
 using FinabitAPI.Core.Utilis;
+using FinabitAPI.Finabit.Transaction.dto;
 using FinabitAPI.Utilis;
+using Microsoft.Data.SqlClient;
 
 namespace FinabitAPI.Finabit.Transaction
 {
@@ -18,7 +18,7 @@ namespace FinabitAPI.Finabit.Transaction
         public string ErrorDescription = "";
 
         private readonly DBAccess? _dbAccess;
-        private bool _ownsConnection; 
+        private bool _ownsConnection;
 
         private SqlConnection? cnnGlobal;
         private SqlTransaction? tranGlobal;
@@ -27,7 +27,7 @@ namespace FinabitAPI.Finabit.Transaction
 
         public TransactionsRepository(bool useGlobalTransaction)
         {
-            OpenGlobalConnection(); 
+            OpenGlobalConnection();
         }
 
         public TransactionsRepository(DBAccess dbAccess, bool useGlobalTransaction = true)
@@ -377,12 +377,10 @@ namespace FinabitAPI.Finabit.Transaction
                 param.Value = cls.IncludeTransport;
                 cmd.Parameters.Add(param);
 
-
                 param = new SqlParameter("@HostName", SqlDbType.VarChar);
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.Memo; // perkohesisht luan rolin e HostName
                 cmd.Parameters.Add(param);
-
 
                 param = new SqlParameter("@Longitude", SqlDbType.Decimal);
                 param.Direction = ParameterDirection.Input;
@@ -423,9 +421,6 @@ namespace FinabitAPI.Finabit.Transaction
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.CardID;
                 cmd.Parameters.Add(param);
-
-            
-
 
                 //cnn.Open();
 
@@ -554,7 +549,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Direction = ParameterDirection.Input;
             param.Value = cls.EmpID;
             cmd.Parameters.Add(param);
-
 
             param = new SqlParameter("@CashAccount", SqlDbType.VarChar);
             param.Direction = ParameterDirection.Input;
@@ -721,7 +715,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = cls.ContractID;
             cmd.Parameters.Add(param);
 
-
             param = new SqlParameter("@POSPaid", SqlDbType.Bit);
             param.Direction = ParameterDirection.Input;
             param.Value = cls.POSPaid;
@@ -757,7 +750,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = cls.IncludeTransport;
             cmd.Parameters.Add(param);
 
-
             param = new SqlParameter("@Longitude", SqlDbType.Decimal);
             param.Direction = ParameterDirection.Input;
             param.Value = cls.Longitude;
@@ -772,7 +764,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Direction = ParameterDirection.Input;
             param.Value = cls.CardID;
             cmd.Parameters.Add(param);
-
 
             param = new SqlParameter("@prmErrorID", SqlDbType.Int);
             param.Direction = ParameterDirection.Output;
@@ -842,14 +833,19 @@ namespace FinabitAPI.Finabit.Transaction
             }
 
             ErrorID = cls.ErrorID;
-
         }
 
         #endregion
 
         #region SelectAll
 
-        public List<Transactions> SelectAll(string FromDate, string ToDate, bool Active, string Type, string DepartmentID)
+        public List<Transactions> SelectAll(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID
+        )
         {
             List<Transactions> clsList = new List<Transactions>();
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -904,7 +900,10 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.VAT = Convert.ToBoolean(dr["VAT"]);
                         cls.InPL = Convert.ToBoolean(dr["InPL"]);
                         cls.PartnerID = Convert.ToInt32(dr["PartnerID"]);
-                        cls.DriverID = dr["DriverID"] == DBNull.Value ? -1 : int.Parse(dr["DriverID"].ToString());
+                        cls.DriverID =
+                            dr["DriverID"] == DBNull.Value
+                                ? -1
+                                : int.Parse(dr["DriverID"].ToString());
                         cls.PlateNo = Convert.ToString(dr["PlateNoDriver"]);
                         cls.PartnersAddress = Convert.ToString(dr["PartnersAddress"]);
                         cls.PartnersContactPerson = Convert.ToString(dr["PartnersContactPerson"]);
@@ -942,7 +941,10 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.RABAT = Convert.ToDecimal(dr["RABAT"]);
                         cls.PartnerName = Convert.ToString(dr["PartnerName"]);
                         cls.DepartmentName = Convert.ToString(dr["DepartmentName"]);
-                        cls.EmployeeName = Convert.ToString(dr["FirstName"]) + " " + Convert.ToString(dr["LastName"]);
+                        cls.EmployeeName =
+                            Convert.ToString(dr["FirstName"])
+                            + " "
+                            + Convert.ToString(dr["LastName"]);
                         cls.Commission1 = Convert.ToInt32(dr["Commission1"]);
                         cls.Commission2 = Convert.ToInt32(dr["Commission2"]);
                         cls.Commission3 = Convert.ToInt32(dr["Commission3"]);
@@ -968,12 +970,14 @@ namespace FinabitAPI.Finabit.Transaction
                         decimal.TryParse(dr["Charges"].ToString(), out Charges);
                         cls.Charges = Charges;
 
-                        cls.POSPaid = dr["POSPaid"] == DBNull.Value ? false : Convert.ToBoolean(dr["POSPaid"]);
+                        cls.POSPaid =
+                            dr["POSPaid"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["POSPaid"]);
                         cls.Longitude = Convert.ToDecimal(dr["Longitude"]);
                         cls.Latitude = Convert.ToDecimal(dr["Latitude"]);
 
                         clsList.Add(cls);
-
                     }
                 }
                 cnn.Close();
@@ -1023,13 +1027,17 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.InvoiceNo = Convert.ToString(dr["InvoiceNo"]);
                         cls.DUDNo = Convert.ToString(dr["DUDNo"]);
                         cls.VAT = Convert.ToBoolean(dr["VAT"]);
-                        cls.InPL = dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
+                        cls.InPL =
+                            dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
                         cls.PartnerID = Convert.ToInt32(dr["PartnerID"]);
                         cls.PartnersAddress = Convert.ToString(dr["PartnersAddress"]);
                         cls.PartnersContactPerson = Convert.ToString(dr["PartnersContactPerson"]);
                         cls.PartnersPhoneNo = Convert.ToString(dr["PartnersPhoneNo"]);
                         cls.DepartmentID = Convert.ToInt32(dr["DepartmentID"]);
-                        cls.DriverID = dr["DriverID"] == DBNull.Value ? -1 : int.Parse(dr["DriverID"].ToString());
+                        cls.DriverID =
+                            dr["DriverID"] == DBNull.Value
+                                ? -1
+                                : int.Parse(dr["DriverID"].ToString());
                         cls.PlateNo = Convert.ToString(dr["PlateNoDriver"]);
                         try
                         {
@@ -1040,7 +1048,10 @@ namespace FinabitAPI.Finabit.Transaction
                             cls.InternalDepartmentID = 0;
                         }
                         cls.EmpID = Convert.ToInt32(dr["EmpID"]);
-                        cls.CashAccount = dr["CashAccount"] == DBNull.Value ? "" : Convert.ToString(dr["CashAccount"]);
+                        cls.CashAccount =
+                            dr["CashAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["CashAccount"]);
                         cls.Import = Convert.ToBoolean(dr["Import"]);
                         cls.Value = Convert.ToDecimal(dr["Value"]);
                         cls.VATValue = Convert.ToDecimal(dr["VATValue"]);
@@ -1052,7 +1063,11 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.Reference = Convert.ToString(dr["Reference"]);
                         cls.Links = Convert.ToString(dr["Links"]);
                         cls.Active = Convert.ToBoolean(dr["Active"]);
-                        cls.JournalStatus = dr["JournalStatus"] == DBNull.Value ? false : Convert.ToBoolean(dr["JournalStatus"]); ;
+                        cls.JournalStatus =
+                            dr["JournalStatus"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["JournalStatus"]);
+                        ;
                         cls.InsBy = Convert.ToInt32(dr["InsBy"]);
                         cls.InsDate = Convert.ToDateTime(dr["InsDate"]);
                         cls.LUB = Convert.ToInt32(dr["LUB"]);
@@ -1063,24 +1078,69 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.Akciza = Convert.ToDecimal(dr["Akciza"]);
                         cls.RABAT = Convert.ToDecimal(dr["RABAT"]);
                         cls.ReferenceID = Convert.ToInt32(dr["ReferenceID"]);
-                        cls.Commission1 = dr["Commission1"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission1"]);
-                        cls.Commission2 = dr["Commission2"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission2"]);
-                        cls.Commission3 = dr["Commission3"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission3"]);
-                        cls.SuficitAccount = dr["SuficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["SuficitAccount"]);
-                        cls.DeficitAccount = dr["DeficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["DeficitAccount"]);
-                        cls.VehicleID = dr["VehicleID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["VehicleID"]);
-                        cls.ItemID = dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
-                        cls.Quantity = dr["Quantity"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Quantity"]);
-                        cls.PartnerItemID = dr["PartnerItemID"] == DBNull.Value ? "" : dr["PartnerItemID"].ToString();
-                        cls.CurrencyID = dr["CurrencyID"] == DBNull.Value ? 0 : int.Parse(dr["CurrencyID"].ToString());
-                        cls.CurrencyRate = dr["CurrencyRate"] == DBNull.Value ? 0 : decimal.Parse(dr["CurrencyRate"].ToString());
-                        cls.OverValue = dr["OverValue"] == DBNull.Value ? 0 : decimal.Parse(dr["OverValue"].ToString());
-                        cls.Charges = dr["Charges"] == DBNull.Value ? 0 : decimal.Parse(dr["Charges"].ToString());
+                        cls.Commission1 =
+                            dr["Commission1"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission1"]);
+                        cls.Commission2 =
+                            dr["Commission2"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission2"]);
+                        cls.Commission3 =
+                            dr["Commission3"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission3"]);
+                        cls.SuficitAccount =
+                            dr["SuficitAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["SuficitAccount"]);
+                        cls.DeficitAccount =
+                            dr["DeficitAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["DeficitAccount"]);
+                        cls.VehicleID =
+                            dr["VehicleID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["VehicleID"]);
+                        cls.ItemID =
+                            dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
+                        cls.Quantity =
+                            dr["Quantity"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Quantity"]);
+                        cls.PartnerItemID =
+                            dr["PartnerItemID"] == DBNull.Value
+                                ? ""
+                                : dr["PartnerItemID"].ToString();
+                        cls.CurrencyID =
+                            dr["CurrencyID"] == DBNull.Value
+                                ? 0
+                                : int.Parse(dr["CurrencyID"].ToString());
+                        cls.CurrencyRate =
+                            dr["CurrencyRate"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["CurrencyRate"].ToString());
+                        cls.OverValue =
+                            dr["OverValue"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["OverValue"].ToString());
+                        cls.Charges =
+                            dr["Charges"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["Charges"].ToString());
                         cls.ContractID = Convert.ToInt32(dr["ContractID"]);
-                        cls.POSPaid = dr["POSPaid"] == DBNull.Value ? false : Convert.ToBoolean(dr["POSPaid"]);
-                        cls.HReservationID = dr["HReservationID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["HReservationID"]);
-                        cls.PaymentTypeID = dr["PaymentTypeID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["PaymentTypeID"]);
-                        cls.PaymentTypeName = dr["PaymentTypeName"] == DBNull.Value ? "" : Convert.ToString(dr["PaymentTypeName"]);
+                        cls.POSPaid =
+                            dr["POSPaid"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["POSPaid"]);
+                        cls.HReservationID =
+                            dr["HReservationID"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["HReservationID"]);
+                        cls.PaymentTypeID =
+                            dr["PaymentTypeID"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["PaymentTypeID"]);
+                        cls.PaymentTypeName =
+                            dr["PaymentTypeName"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["PaymentTypeName"]);
                         cls.CompanyID = Convert.ToInt16(dr["CompanyID"]);
                         cls.Longitude = Convert.ToDecimal(dr["Longitude"]);
                         cls.Latitude = Convert.ToDecimal(dr["Latitude"]);
@@ -1138,13 +1198,17 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.InvoiceNo = Convert.ToString(dr["InvoiceNo"]);
                         cls.DUDNo = Convert.ToString(dr["DUDNo"]);
                         cls.VAT = Convert.ToBoolean(dr["VAT"]);
-                        cls.InPL = dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
+                        cls.InPL =
+                            dr["InPL"] == DBNull.Value ? false : Convert.ToBoolean(dr["InPL"]);
                         cls.PartnerID = Convert.ToInt32(dr["PartnerID"]);
                         cls.PartnersAddress = Convert.ToString(dr["PartnersAddress"]);
                         cls.PartnersContactPerson = Convert.ToString(dr["PartnersContactPerson"]);
                         cls.PartnersPhoneNo = Convert.ToString(dr["PartnersPhoneNo"]);
                         cls.DepartmentID = Convert.ToInt32(dr["DepartmentID"]);
-                        cls.DriverID = dr["DriverID"] == DBNull.Value ? -1 : int.Parse(dr["DriverID"].ToString());
+                        cls.DriverID =
+                            dr["DriverID"] == DBNull.Value
+                                ? -1
+                                : int.Parse(dr["DriverID"].ToString());
                         cls.PlateNo = Convert.ToString(dr["PlateNoDriver"]);
                         try
                         {
@@ -1155,7 +1219,10 @@ namespace FinabitAPI.Finabit.Transaction
                             cls.InternalDepartmentID = 0;
                         }
                         cls.EmpID = Convert.ToInt32(dr["EmpID"]);
-                        cls.CashAccount = dr["CashAccount"] == DBNull.Value ? "" : Convert.ToString(dr["CashAccount"]);
+                        cls.CashAccount =
+                            dr["CashAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["CashAccount"]);
                         cls.Import = Convert.ToBoolean(dr["Import"]);
                         cls.Value = Convert.ToDecimal(dr["Value"]);
                         cls.VATValue = Convert.ToDecimal(dr["VATValue"]);
@@ -1167,7 +1234,11 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.Reference = Convert.ToString(dr["Reference"]);
                         cls.Links = Convert.ToString(dr["Links"]);
                         cls.Active = Convert.ToBoolean(dr["Active"]);
-                        cls.JournalStatus = dr["JournalStatus"] == DBNull.Value ? false : Convert.ToBoolean(dr["JournalStatus"]); ;
+                        cls.JournalStatus =
+                            dr["JournalStatus"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["JournalStatus"]);
+                        ;
                         cls.InsBy = Convert.ToInt32(dr["InsBy"]);
                         cls.InsDate = Convert.ToDateTime(dr["InsDate"]);
                         cls.LUB = Convert.ToInt32(dr["LUB"]);
@@ -1178,24 +1249,69 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.Akciza = Convert.ToDecimal(dr["Akciza"]);
                         cls.RABAT = Convert.ToDecimal(dr["RABAT"]);
                         cls.ReferenceID = Convert.ToInt32(dr["ReferenceID"]);
-                        cls.Commission1 = dr["Commission1"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission1"]);
-                        cls.Commission2 = dr["Commission2"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission2"]);
-                        cls.Commission3 = dr["Commission3"] == DBNull.Value ? 0 : Convert.ToInt32(dr["Commission3"]);
-                        cls.SuficitAccount = dr["SuficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["SuficitAccount"]);
-                        cls.DeficitAccount = dr["DeficitAccount"] == DBNull.Value ? "" : Convert.ToString(dr["DeficitAccount"]);
-                        cls.VehicleID = dr["VehicleID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["VehicleID"]);
-                        cls.ItemID = dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
-                        cls.Quantity = dr["Quantity"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Quantity"]);
-                        cls.PartnerItemID = dr["PartnerItemID"] == DBNull.Value ? "" : dr["PartnerItemID"].ToString();
-                        cls.CurrencyID = dr["CurrencyID"] == DBNull.Value ? 0 : int.Parse(dr["CurrencyID"].ToString());
-                        cls.CurrencyRate = dr["CurrencyRate"] == DBNull.Value ? 0 : decimal.Parse(dr["CurrencyRate"].ToString());
-                        cls.OverValue = dr["OverValue"] == DBNull.Value ? 0 : decimal.Parse(dr["OverValue"].ToString());
-                        cls.Charges = dr["Charges"] == DBNull.Value ? 0 : decimal.Parse(dr["Charges"].ToString());
+                        cls.Commission1 =
+                            dr["Commission1"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission1"]);
+                        cls.Commission2 =
+                            dr["Commission2"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission2"]);
+                        cls.Commission3 =
+                            dr["Commission3"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["Commission3"]);
+                        cls.SuficitAccount =
+                            dr["SuficitAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["SuficitAccount"]);
+                        cls.DeficitAccount =
+                            dr["DeficitAccount"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["DeficitAccount"]);
+                        cls.VehicleID =
+                            dr["VehicleID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["VehicleID"]);
+                        cls.ItemID =
+                            dr["ItemID"] == DBNull.Value ? "" : Convert.ToString(dr["ItemID"]);
+                        cls.Quantity =
+                            dr["Quantity"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Quantity"]);
+                        cls.PartnerItemID =
+                            dr["PartnerItemID"] == DBNull.Value
+                                ? ""
+                                : dr["PartnerItemID"].ToString();
+                        cls.CurrencyID =
+                            dr["CurrencyID"] == DBNull.Value
+                                ? 0
+                                : int.Parse(dr["CurrencyID"].ToString());
+                        cls.CurrencyRate =
+                            dr["CurrencyRate"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["CurrencyRate"].ToString());
+                        cls.OverValue =
+                            dr["OverValue"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["OverValue"].ToString());
+                        cls.Charges =
+                            dr["Charges"] == DBNull.Value
+                                ? 0
+                                : decimal.Parse(dr["Charges"].ToString());
                         cls.ContractID = Convert.ToInt32(dr["ContractID"]);
-                        cls.POSPaid = dr["POSPaid"] == DBNull.Value ? false : Convert.ToBoolean(dr["POSPaid"]);
-                        cls.HReservationID = dr["HReservationID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["HReservationID"]);
-                        cls.PaymentTypeID = dr["PaymentTypeID"] == DBNull.Value ? 0 : Convert.ToInt32(dr["PaymentTypeID"]);
-                        cls.PaymentTypeName = dr["PaymentTypeName"] == DBNull.Value ? "" : Convert.ToString(dr["PaymentTypeName"]);
+                        cls.POSPaid =
+                            dr["POSPaid"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["POSPaid"]);
+                        cls.HReservationID =
+                            dr["HReservationID"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["HReservationID"]);
+                        cls.PaymentTypeID =
+                            dr["PaymentTypeID"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["PaymentTypeID"]);
+                        cls.PaymentTypeName =
+                            dr["PaymentTypeName"] == DBNull.Value
+                                ? ""
+                                : Convert.ToString(dr["PaymentTypeName"]);
                         cls.CompanyID = Convert.ToInt16(dr["CompanyID"]);
                         cls.Longitude = Convert.ToDecimal(dr["Longitude"]);
                         cls.Latitude = Convert.ToDecimal(dr["Latitude"]);
@@ -1281,7 +1397,10 @@ namespace FinabitAPI.Finabit.Transaction
                         cls.TableID = Convert.ToInt32(dr["TableID"]);
                         cls.POSStatus = Convert.ToInt32(dr["POSStatus"]);
                         cls.TerminID = Convert.ToInt32(dr["TerminID"]);
-                        cls.POSPaid = dr["POSPaid"] == DBNull.Value ? false : Convert.ToBoolean(dr["POSPaid"]);
+                        cls.POSPaid =
+                            dr["POSPaid"] == DBNull.Value
+                                ? false
+                                : Convert.ToBoolean(dr["POSPaid"]);
                         cls.Longitude = Convert.ToDecimal(dr["Longitude"]);
                         cls.Latitude = Convert.ToDecimal(dr["Latitude"]);
                         break;
@@ -1323,7 +1442,6 @@ namespace FinabitAPI.Finabit.Transaction
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(data);
                 return data;
-
             }
             catch (Exception ex)
             {
@@ -1352,7 +1470,6 @@ namespace FinabitAPI.Finabit.Transaction
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(dt);
             }
-
             catch (Exception)
             {
                 string s = "";
@@ -1364,14 +1481,20 @@ namespace FinabitAPI.Finabit.Transaction
             }
 
             return dt;
-
         }
 
         #endregion
 
         #region GetTransaction
 
-        public DataTable GetTransaction(string FromDate, string ToDate, bool Active, string Type, string DepartmentID, int UserID)
+        public DataTable GetTransaction(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID,
+            int UserID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spTransactionsList", cnn);
@@ -1412,7 +1535,14 @@ namespace FinabitAPI.Finabit.Transaction
             return GlobalRepository.ListTables(cmd);
         }
 
-        public DataTable GetTransactionForAll(string FromDate, string ToDate, bool Active, string Type, string DepartmentID, int UserID)
+        public DataTable GetTransactionForAll(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type,
+            string DepartmentID,
+            int UserID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spTransactionsListForAll", cnn);
@@ -1453,7 +1583,12 @@ namespace FinabitAPI.Finabit.Transaction
             return GlobalRepository.ListTables(cmd);
         }
 
-        public DataTable GetOrdersList(string FromDate, string ToDate, string DepartmentID, int UserID)
+        public DataTable GetOrdersList(
+            string FromDate,
+            string ToDate,
+            string DepartmentID,
+            int UserID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spOrdersList", cnn);
@@ -1488,7 +1623,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region RegistrationsList
 
-        public DataTable RegistrationsList(string FromDate, string ToDate, bool Active, string DepartmentID)
+        public DataTable RegistrationsList(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string DepartmentID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spRegistrationsList", cnn);
@@ -1603,7 +1743,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region GetTransactionPayments
 
-        public DataTable GetTransactionPayments(string FromDate, string ToDate, bool Active, string Type)
+        public DataTable GetTransactionPayments(
+            string FromDate,
+            string ToDate,
+            bool Active,
+            string Type
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spPaymentsList", cnn);
@@ -1671,15 +1816,14 @@ namespace FinabitAPI.Finabit.Transaction
         #endregion
 
 
-
         #region GetTransactionNo
         public string GetTransactionNo(int transactionType, DateTime date, int departmentId)
         {
-            using var connection = _dbAccess.GetConnection(); 
+            using var connection = _dbAccess.GetConnection();
             using var cmd = new SqlCommand("spGetTransactionNo", connection)
             {
                 CommandType = CommandType.StoredProcedure,
-                CommandTimeout = 0
+                CommandTimeout = 0,
             };
 
             cmd.Parameters.Add("@TypeID", SqlDbType.Int).Value = transactionType;
@@ -1901,7 +2045,13 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region UpdateAveragePrice
 
-        public void UpdateAveragePrice(string ItemID, int DepartmentID, int TransactionID, DateTime TransactionDate, int UserID)
+        public void UpdateAveragePrice(
+            string ItemID,
+            int DepartmentID,
+            int TransactionID,
+            DateTime TransactionDate,
+            int UserID
+        )
         {
             SqlCommand cmd = SqlCommandForTran_SP("[spUpdateAveragePrice]");
 
@@ -1951,7 +2101,11 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region UpdateAveragePriceForGroup
 
-        public void UpdateAveragePriceForGroup(DataTable Items, DateTime TransactionDate, int UserID)
+        public void UpdateAveragePriceForGroup(
+            DataTable Items,
+            DateTime TransactionDate,
+            int UserID
+        )
         {
             DataTable dt = new DataTable();
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -1998,9 +2152,14 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region CreateAutomaticRealization
 
-        public void CreateAutomaticRealization(int TransactionID, int Mode, int NewTransactionID, int DepartmentID, int UserID)
+        public void CreateAutomaticRealization(
+            int TransactionID,
+            int Mode,
+            int NewTransactionID,
+            int DepartmentID,
+            int UserID
+        )
         {
-
             SqlCommand cmd = SqlCommandForTran_SP("[spCreateAutomaticRealization]");
 
             SqlParameter param;
@@ -2029,8 +2188,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = UserID;
             cmd.Parameters.Add(param);
 
-
-
             try
             {
                 cmd.ExecuteNonQuery();
@@ -2046,9 +2203,14 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region CreateManualRealization
 
-        public void CreateManualRealization(int TransactionID, int DepartmentID, int Mode, DataTable Serials, int UserID)
+        public void CreateManualRealization(
+            int TransactionID,
+            int DepartmentID,
+            int Mode,
+            DataTable Serials,
+            int UserID
+        )
         {
-
             SqlCommand cmd = SqlCommandForTran_SP("[spCreateManualRealization]");
 
             SqlParameter param;
@@ -2072,12 +2234,10 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = UserID;
             cmd.Parameters.Add(param);
 
-
             param = new SqlParameter("@Serials", SqlDbType.Structured);
             param.Direction = ParameterDirection.Input;
             param.Value = Serials;
             cmd.Parameters.Add(param);
-
 
             try
             {
@@ -2094,10 +2254,13 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region TransactionsByTerminForPOS
 
-        public DataTable TransactionsByTerminForPOS(DateTime FromDate, DateTime ToDate, int TerminID)
+        public DataTable TransactionsByTerminForPOS(
+            DateTime FromDate,
+            DateTime ToDate,
+            int TerminID
+        )
         {
             DataTable dt = new DataTable();
-
 
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spTransactionsListForPOS", cnn);
@@ -2149,7 +2312,6 @@ namespace FinabitAPI.Finabit.Transaction
 
         public void UpdateAveragePriceForAssembly(int UserID)
         {
-
             SqlCommand cmd = SqlCommandForTran_SP("spUpdateAveragePriceForAssembly");
 
             SqlParameter param;
@@ -2180,7 +2342,6 @@ namespace FinabitAPI.Finabit.Transaction
 
         public void CreateBatchJournals(int UserID)
         {
-
             SqlCommand cmd = SqlCommandForTran_SP("spCreateBatchJournals");
 
             SqlParameter param;
@@ -2207,7 +2368,6 @@ namespace FinabitAPI.Finabit.Transaction
         public DataTable GetUserTransactions(int UserID, int DepartmentID)
         {
             DataTable dt = new DataTable();
-
 
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spGetUsedTransactions", cnn);
@@ -2279,7 +2439,6 @@ namespace FinabitAPI.Finabit.Transaction
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(data);
                 return data;
-
             }
             catch (Exception ex)
             {
@@ -2316,7 +2475,6 @@ namespace FinabitAPI.Finabit.Transaction
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(data);
                 return data;
-
             }
             catch (Exception ex)
             {
@@ -2346,10 +2504,8 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = dt;
             cmd.Parameters.Add(param);
 
-
             try
             {
-
                 cmd.ExecuteNonQuery();
                 cls.ErrorID = 0;
                 ErrorID = 0;
@@ -2363,7 +2519,6 @@ namespace FinabitAPI.Finabit.Transaction
             }
 
             ErrorID = cls.ErrorID;
-
         }
 
         #endregion
@@ -2440,7 +2595,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region UpdateNewCash
 
-        public DataTable UpdateNewCash(int DetailsID, int OldTransactionID, int NewTransactionID, int userID)
+        public DataTable UpdateNewCash(
+            int DetailsID,
+            int OldTransactionID,
+            int NewTransactionID,
+            int userID
+        )
         {
             DataTable dt = new DataTable();
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -2479,7 +2639,6 @@ namespace FinabitAPI.Finabit.Transaction
 
         public void AllowReplication(DataTable Transactions, bool Value)
         {
-
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spAllowReplicationForAll", cnn);
             cmd.CommandType = CommandType.StoredProcedure;
@@ -2589,7 +2748,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region GetRegistrations
 
-        public DataTable GetRegistrations(string FromDate, string ToDate, string DepartmentID, int UserID)
+        public DataTable GetRegistrations(
+            string FromDate,
+            string ToDate,
+            string DepartmentID,
+            int UserID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spRegistrationList", cnn);
@@ -2711,7 +2875,6 @@ namespace FinabitAPI.Finabit.Transaction
 
         public void UpdateDiscountBatch(DataTable Transactions, decimal Discount)
         {
-
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spUpdateDiscountBatch", cnn);
             cmd.CommandType = CommandType.StoredProcedure;
@@ -2746,7 +2909,12 @@ namespace FinabitAPI.Finabit.Transaction
 
         #region ReRealisation
 
-        public void ReRealisation(DataTable Transactions, DateTime FromDate, DateTime ToDate, int UserID)
+        public void ReRealisation(
+            DataTable Transactions,
+            DateTime FromDate,
+            DateTime ToDate,
+            int UserID
+        )
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spRiRealization", cnn);
@@ -3089,7 +3257,6 @@ namespace FinabitAPI.Finabit.Transaction
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(data);
                 return data;
-
             }
             catch (Exception ex)
             {
@@ -3097,7 +3264,6 @@ namespace FinabitAPI.Finabit.Transaction
                 cnn.Close();
             }
             return data;
-
         }
 
         #endregion
@@ -3194,7 +3360,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = TransactionID;
             cmd.Parameters.Add(param);
 
-
             param = new SqlParameter("@POSPaid", SqlDbType.Bit);
             param.Direction = ParameterDirection.Input;
             param.Value = POSPaid;
@@ -3222,13 +3387,12 @@ namespace FinabitAPI.Finabit.Transaction
         public void OpenGlobalConnection()
         {
             if (cnnGlobal != null && cnnGlobal.State == ConnectionState.Open)
-                return; 
+                return;
 
-            SqlConnection conn = _dbAccess != null
-                ? _dbAccess.GetConnection()
-                : GlobalRepository.GetConnection();
+            SqlConnection conn =
+                _dbAccess != null ? _dbAccess.GetConnection() : GlobalRepository.GetConnection();
 
-            _ownsConnection = true;  
+            _ownsConnection = true;
             cnnGlobal = conn;
 
             cnnGlobal.Open();
@@ -3240,7 +3404,8 @@ namespace FinabitAPI.Finabit.Transaction
         {
             try
             {
-                if (cnnGlobal == null) return;
+                if (cnnGlobal == null)
+                    return;
 
                 if (tranGlobal != null)
                 {
@@ -3251,9 +3416,7 @@ namespace FinabitAPI.Finabit.Transaction
                         else
                             tranGlobal.Commit();
                     }
-                    catch
-                    {
-                    }
+                    catch { }
                     finally
                     {
                         tranGlobal.Dispose();
@@ -3284,7 +3447,7 @@ namespace FinabitAPI.Finabit.Transaction
             {
                 CommandType = CommandType.StoredProcedure,
                 CommandTimeout = 0,
-                Transaction = tranGlobal
+                Transaction = tranGlobal,
             };
             return cmd;
         }
@@ -3296,7 +3459,7 @@ namespace FinabitAPI.Finabit.Transaction
             {
                 CommandType = CommandType.Text,
                 CommandTimeout = 0,
-                Transaction = tranGlobal
+                Transaction = tranGlobal,
             };
             return cmd;
         }
@@ -3421,13 +3584,10 @@ namespace FinabitAPI.Finabit.Transaction
                 param.Value = cls.PDAInsDate;
                 cmd.Parameters.Add(param);
 
-
                 param = new SqlParameter("@PartnerID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
                 param.Value = cls.PartnerID;
                 cmd.Parameters.Add(param);
-
-
 
                 param = new SqlParameter("@DepartmentID", SqlDbType.Int);
                 param.Direction = ParameterDirection.Input;
@@ -3439,11 +3599,9 @@ namespace FinabitAPI.Finabit.Transaction
                 param.Value = cls.InternalDepartmentID;
                 cmd.Parameters.Add(param);
 
-
                 param = new SqlParameter("@prmExists", SqlDbType.Int);
                 param.Direction = ParameterDirection.Output;
                 cmd.Parameters.Add(param);
-
 
                 //param = new SqlParameter("@PaymentMethodID", System.Data.SqlDbType.TinyInt);
                 //param.Direction = ParameterDirection.Input;
@@ -3454,7 +3612,6 @@ namespace FinabitAPI.Finabit.Transaction
 
                 cmd.ExecuteNonQuery();
                 ReturnValue = Convert.ToBoolean(cmd.Parameters["@prmExists"].Value);
-
 
                 cnn.Close();
             }
@@ -3471,7 +3628,11 @@ namespace FinabitAPI.Finabit.Transaction
             return ReturnValue;
         }
 
-        public List<XMLTransactionDetails> M_GetSalesArticles(DateTime FromDate, DateTime ToDate, int DepartmentID)
+        public List<XMLTransactionDetails> M_GetSalesArticles(
+            DateTime FromDate,
+            DateTime ToDate,
+            int DepartmentID
+        )
         {
             List<XMLTransactionDetails> detailsList = new List<XMLTransactionDetails>();
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -3494,7 +3655,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = DepartmentID;
             cmd.Parameters.Add(param);
 
-
             try
             {
                 cnn.Open();
@@ -3514,10 +3674,13 @@ namespace FinabitAPI.Finabit.Transaction
                 }
                 cnn.Close();
             }
-            catch (Exception ex) { string m = ex.Message; cnn.Close(); }
+            catch (Exception ex)
+            {
+                string m = ex.Message;
+                cnn.Close();
+            }
             return detailsList;
         }
-
 
         #region GetInvoiceNo
 
@@ -3665,8 +3828,6 @@ namespace FinabitAPI.Finabit.Transaction
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.CommandTimeout = 0;
 
-
-
             try
             {
                 cnn.Open();
@@ -3697,8 +3858,6 @@ namespace FinabitAPI.Finabit.Transaction
             cmd.CommandTimeout = 0;
 
             SqlParameter param;
-
-
 
             param = new SqlParameter("@Type", SqlDbType.Int);
             param.Direction = ParameterDirection.Input;
@@ -3735,7 +3894,12 @@ namespace FinabitAPI.Finabit.Transaction
             return rez;
         }
 
-        public int GetTranID_NotaKreditore(int Type, int PartnerID, string TransactionNo, string tranDate)
+        public int GetTranID_NotaKreditore(
+            int Type,
+            int PartnerID,
+            string TransactionNo,
+            string tranDate
+        )
         {
             int rez = 0;
 
@@ -3745,8 +3909,6 @@ namespace FinabitAPI.Finabit.Transaction
             cmd.CommandTimeout = 0;
 
             SqlParameter param;
-
-
 
             param = new SqlParameter("@Type", SqlDbType.Int);
             param.Direction = ParameterDirection.Input;
@@ -3798,7 +3960,6 @@ namespace FinabitAPI.Finabit.Transaction
             param.Value = FlightNo;
             cmd.Parameters.Add(param);
 
-
             try
             {
                 cnn.Open();
@@ -3813,19 +3974,23 @@ namespace FinabitAPI.Finabit.Transaction
                         dt.ItemName = Convert.ToString(dr["ItemName"]);
                         dt.Quantity = Convert.ToDecimal(dr["Quantity"]);
                         dt.Value = Convert.ToDecimal(dr["Value"]);
-                        dt.Rabat = Convert.ToDecimal(dr["Shabllon_QUantity"]);// fusha e Rabatit perdoret per Shabllon_Quantity
+                        dt.Rabat = Convert.ToDecimal(dr["Shabllon_QUantity"]); // fusha e Rabatit perdoret per Shabllon_Quantity
                         dt.Rabat2 = Convert.ToDecimal(dr["Return_Quantity"]);
                         detailsList.Add(dt);
                     }
                 }
                 cnn.Close();
             }
-            catch (Exception ex) { string m = ex.Message; cnn.Close(); }
+            catch (Exception ex)
+            {
+                string m = ex.Message;
+                cnn.Close();
+            }
             return detailsList;
         }
+
         public XMLTransactions SelectXMLTransactionByID(int TransactionID)
         {
-
             SqlConnection cnn = GlobalRepository.GetConnection();
             SqlCommand cmd = new SqlCommand("spTransactionsByID", cnn);
             cmd.CommandType = CommandType.StoredProcedure;
@@ -3882,9 +4047,6 @@ namespace FinabitAPI.Finabit.Transaction
             return cls;
         }
 
-
-
-
         public void UpdateIsPrintFiscalInvoiceAsTrueByTranID(int TransactionsID)
         {
             SqlConnection cnn = GlobalRepository.GetConnection();
@@ -3907,7 +4069,6 @@ namespace FinabitAPI.Finabit.Transaction
             }
             catch (Exception ex)
             {
-
                 cnn.Close();
             }
         }
@@ -3921,8 +4082,6 @@ namespace FinabitAPI.Finabit.Transaction
             cmd.CommandTimeout = 0;
 
             SqlParameter param;
-
-         
 
             param = new SqlParameter("@Orders", SqlDbType.Structured);
             param.Direction = ParameterDirection.Input;
@@ -3952,11 +4111,10 @@ namespace FinabitAPI.Finabit.Transaction
             }
             cnn.Close();
 
-
             return result;
         }
 
-        public bool UpdateDriverInTransaction(int TransactionId,int EmpID)
+        public bool UpdateDriverInTransaction(int TransactionId, int EmpID)
         {
             bool result = false;
             SqlConnection cnn = new SqlConnection();
@@ -3992,5 +4150,40 @@ namespace FinabitAPI.Finabit.Transaction
             return result;
         }
 
+        public void CreateAutomaticJournals(int TransactionID, int UserID, int Automatically)
+        {
+            SqlCommand cmd = SqlCommandForTran_SP("spCreateAutomaticJournals");
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = 0;
+
+            SqlParameter param;
+            param = new SqlParameter("@TransactionID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = TransactionID;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@UserID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = UserID;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@Return", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Input;
+            param.Value = Automatically;
+            cmd.Parameters.Add(param);
+
+            param = new SqlParameter("@prmErrorID", System.Data.SqlDbType.Int);
+            param.Direction = ParameterDirection.Output;
+            cmd.Parameters.Add(param);
+
+            try
+            {
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                ErrorDescription = ex.Message;
+            }
+        }
     }
 }

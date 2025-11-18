@@ -1,9 +1,8 @@
-﻿
-using System.Data;
-using Microsoft.Data.SqlClient;
-using FinabitAPI.Utilis;
+﻿using System.Data;
 using FinabitAPI.Core.User.dto;
 using FinabitAPI.Core.Utilis;
+using FinabitAPI.Utilis;
+using Microsoft.Data.SqlClient;
 
 namespace FinabitAPI.User
 {
@@ -21,18 +20,29 @@ namespace FinabitAPI.User
             var cls = new Users();
 
             using (var cnn = _db.GetConnection()) // <-- per-tenant connection
-            using (var cmd = new SqlCommand("spGetLoginUser", cnn)
+            using (
+                var cmd = new SqlCommand("spGetLoginUser", cnn)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    CommandTimeout = 30,
+                }
+            )
             {
-                CommandType = CommandType.StoredProcedure,
-                CommandTimeout = 30
-            })
-            {
-                cmd.Parameters.Add(new SqlParameter("@UserName", SqlDbType.VarChar, 256) { Value = UserName });
+                cmd.Parameters.Add(
+                    new SqlParameter("@UserName", SqlDbType.VarChar, 256) { Value = UserName }
+                );
 
                 string strPassword = GlobalAppData.EncryptDES(Password);
-                cmd.Parameters.Add(new SqlParameter("@Password", SqlDbType.NVarChar, 512) { Value = strPassword });
+                cmd.Parameters.Add(
+                    new SqlParameter("@Password", SqlDbType.NVarChar, 512) { Value = strPassword }
+                );
 
-                cmd.Parameters.Add(new SqlParameter("@WindowsUser", SqlDbType.VarChar, 256) { Value = Environment.UserName });
+                cmd.Parameters.Add(
+                    new SqlParameter("@WindowsUser", SqlDbType.VarChar, 256)
+                    {
+                        Value = Environment.UserName,
+                    }
+                );
 
                 try
                 {
@@ -48,21 +58,32 @@ namespace FinabitAPI.User
                             int GetInt(params string[] names) => GetIntSafe(dr, names);
                             bool GetBool(params string[] names) => GetBoolSafe(dr, names);
                             DateTime GetDate(params string[] names) => GetDateTimeSafe(dr, names);
-                            string? GetStrN(params string[] names) => GetStringOrNullSafe(dr, names);
+                            string? GetStrN(params string[] names) =>
+                                GetStringOrNullSafe(dr, names);
                             string GetStr(params string[] names) => GetStringSafe(dr, names);
 
                             cls.ID = GetInt("UserID", "UserId");
 
                             int userNameOrd = Ord("Username", "UserName");
-                            cls.UserName = userNameOrd >= 0 && !dr.IsDBNull(userNameOrd)
-                                ? dr.GetString(userNameOrd)
-                                : UserName;
+                            cls.UserName =
+                                userNameOrd >= 0 && !dr.IsDBNull(userNameOrd)
+                                    ? dr.GetString(userNameOrd)
+                                    : UserName;
 
                             cls.ExpireDate = GetDate("ExpireDate");
                             cls.Status = GetBool("Status", "IsActive");
                             cls.DepartmentID = GetInt("DepartmentID", "DepartmentId");
-                            cls.DefaultPartnerID = GetInt("PosPartnerID", "POSPartnerID", "DefaultPartnerID", "DefaultPartnerId");
-                            cls.DefaultPartnerName = GetStrN("PosPartnerName", "POSPartnerName", "DefaultPartnerName");
+                            cls.DefaultPartnerID = GetInt(
+                                "PosPartnerID",
+                                "POSPartnerID",
+                                "DefaultPartnerID",
+                                "DefaultPartnerId"
+                            );
+                            cls.DefaultPartnerName = GetStrN(
+                                "PosPartnerName",
+                                "POSPartnerName",
+                                "DefaultPartnerName"
+                            );
                             cls.RoleID = GetInt("RoleID", "RoleId");
                             cls.IsDeleteWithAuthorization = GetBool("IsDeleteWithAuthorization");
                             cls.PartnerID = GetInt("PartnerID", "PartnerId");
@@ -81,12 +102,90 @@ namespace FinabitAPI.User
             return cls;
         }
 
+        public Users GetUserByUsername(string userName)
+        {
+            var cls = new Users();
+
+            using (var cnn = _db.GetConnection())
+            using (
+                var cmd = new SqlCommand("spGetUserByUsername_API", cnn)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    CommandTimeout = 30,
+                }
+            )
+            {
+                cmd.Parameters.Add(
+                    new SqlParameter("@UserName", SqlDbType.VarChar, 256) { Value = userName }
+                );
+
+                try
+                {
+                    cls.HasConnections = true;
+                    cnn.Open();
+
+                    using (var dr = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                    {
+                        if (dr.Read())
+                        {
+                            // reuse the same helpers as in GetLoginUser
+                            int Ord(params string[] names) => GetOrdinalSafe(dr, names);
+                            int GetInt(params string[] names) => GetIntSafe(dr, names);
+                            bool GetBool(params string[] names) => GetBoolSafe(dr, names);
+                            DateTime GetDate(params string[] names) => GetDateTimeSafe(dr, names);
+                            string? GetStrN(params string[] names) =>
+                                GetStringOrNullSafe(dr, names);
+                            string GetStr(params string[] names) => GetStringSafe(dr, names);
+
+                            cls.ID = GetInt("UserID", "UserId");
+
+                            int userNameOrd = Ord("Username", "UserName");
+                            cls.UserName =
+                                userNameOrd >= 0 && !dr.IsDBNull(userNameOrd)
+                                    ? dr.GetString(userNameOrd)
+                                    : userName;
+
+                            cls.ExpireDate = GetDate("ExpireDate");
+                            cls.Status = GetBool("Status", "IsActive");
+                            cls.DepartmentID = GetInt("DepartmentID", "DepartmentId");
+                            cls.DefaultPartnerID = GetInt(
+                                "PosPartnerID",
+                                "POSPartnerID",
+                                "DefaultPartnerID",
+                                "DefaultPartnerId"
+                            );
+                            cls.DefaultPartnerName = GetStrN(
+                                "PosPartnerName",
+                                "POSPartnerName",
+                                "DefaultPartnerName"
+                            );
+                            cls.RoleID = GetInt("RoleID", "RoleId");
+                            cls.IsDeleteWithAuthorization = GetBool("IsDeleteWithAuthorization");
+                            cls.PartnerID = GetInt("PartnerID", "PartnerId");
+                            cls.IsAuthoriser = GetBool("IsAuthoriser", "IsAuthorizer");
+                            cls.DisableDateInDocuments = GetBool("DisableDateInDocuments");
+                        }
+                    }
+                }
+                catch
+                {
+                    cls.HasConnections = false;
+                    throw;
+                }
+            }
+
+            return cls;
+        }
+
         // ---------- safe readers ----------
         private static int GetOrdinalSafe(SqlDataReader r, params string[] names)
         {
             foreach (var n in names)
             {
-                try { return r.GetOrdinal(n); }
+                try
+                {
+                    return r.GetOrdinal(n);
+                }
                 catch (IndexOutOfRangeException) { }
             }
             return -1;
@@ -95,37 +194,43 @@ namespace FinabitAPI.User
         private static string? GetStringOrNullSafe(SqlDataReader r, params string[] names)
         {
             int ord = GetOrdinalSafe(r, names);
-            if (ord < 0 || r.IsDBNull(ord)) return null;
+            if (ord < 0 || r.IsDBNull(ord))
+                return null;
             return r.GetString(ord);
         }
 
         private static string GetStringSafe(SqlDataReader r, params string[] names)
         {
             int ord = GetOrdinalSafe(r, names);
-            if (ord < 0 || r.IsDBNull(ord)) return string.Empty;
+            if (ord < 0 || r.IsDBNull(ord))
+                return string.Empty;
             return r.GetString(ord);
         }
 
         private static int GetIntSafe(SqlDataReader r, params string[] names)
         {
             int ord = GetOrdinalSafe(r, names);
-            if (ord < 0 || r.IsDBNull(ord)) return 0;
+            if (ord < 0 || r.IsDBNull(ord))
+                return 0;
             return Convert.ToInt32(r.GetValue(ord));
         }
 
         private static bool GetBoolSafe(SqlDataReader r, params string[] names)
         {
             int ord = GetOrdinalSafe(r, names);
-            if (ord < 0 || r.IsDBNull(ord)) return false;
+            if (ord < 0 || r.IsDBNull(ord))
+                return false;
             var v = r.GetValue(ord);
-            if (v is bool b) return b;
+            if (v is bool b)
+                return b;
             return Convert.ToInt32(v) != 0;
         }
 
         private static DateTime GetDateTimeSafe(SqlDataReader r, params string[] names)
         {
             int ord = GetOrdinalSafe(r, names);
-            if (ord < 0 || r.IsDBNull(ord)) return DateTime.MinValue;
+            if (ord < 0 || r.IsDBNull(ord))
+                return DateTime.MinValue;
             var v = r.GetValue(ord);
             return (v is DateTime dt) ? dt : Convert.ToDateTime(v);
         }

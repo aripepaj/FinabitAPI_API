@@ -1,12 +1,13 @@
 //-- =============================================
 //-- Author:		Generated
-//-- Create date: 07.10.25 
+//-- Create date: 07.10.25
 //-- Description:	Repository for System Data operations
 //-- =============================================
 using System.Data;
-using Microsoft.Data.SqlClient;
 using FinabitAPI.Core.Global;
+using FinabitAPI.Finabit.SystemInfo.dto;
 using FinabitAPI.Utilis;
+using Microsoft.Data.SqlClient;
 
 namespace FinabitAPI.Finabit.SystemData
 {
@@ -30,7 +31,7 @@ namespace FinabitAPI.Finabit.SystemData
             SqlConnection connection = _dbAccess.GetConnection();
             SqlCommand command = new SqlCommand("spSystemList", connection);
             command.CommandType = CommandType.StoredProcedure;
-            
+
             try
             {
                 connection.Open();
@@ -57,7 +58,10 @@ namespace FinabitAPI.Finabit.SystemData
                         data.ComBankAccount4 = Convert.ToString(reader["ComBankAccount4"]);
                         data.ComEmail = Convert.ToString(reader["ComEmail"]);
                         data.ComWebAddress = Convert.ToString(reader["ComWebAddress"]);
-                        data.ComLogo = (reader["ComLogo"] == DBNull.Value) ? null : ((byte[])reader["ComLogo"]);
+                        data.ComLogo =
+                            (reader["ComLogo"] == DBNull.Value)
+                                ? null
+                                : ((byte[])reader["ComLogo"]);
                         data.VATPrc = Convert.ToDecimal(reader["VATPrc"]);
                         data.AkcizaPartner = Convert.ToString(reader["AkcizaPartner"]);
                         data.VATPartner = Convert.ToString(reader["VATPartner"]);
@@ -66,8 +70,12 @@ namespace FinabitAPI.Finabit.SystemData
                         data.InfoText = Convert.ToString(reader["InfoText"]);
                         data.PayablesVATAccount = Convert.ToString(reader["PayablesVATAccount"]);
                         data.ReceivingBank = Convert.ToString(reader["ReceivingBank"]);
-                        data.ReceivingCustomerAccount = Convert.ToString(reader["ReceivingCustomerAccount"]);
-                        data.ReceivingCustomerName = Convert.ToString(reader["ReceivingCustomerName"]);
+                        data.ReceivingCustomerAccount = Convert.ToString(
+                            reader["ReceivingCustomerAccount"]
+                        );
+                        data.ReceivingCustomerName = Convert.ToString(
+                            reader["ReceivingCustomerName"]
+                        );
                         data.Mod36 = Convert.ToString(reader["Mod36"]);
                         data.EmailPort = Convert.ToInt32(reader["EmailPort"].ToString());
                         data.EmailSMTP = Convert.ToString(reader["EmailSMTP"]);
@@ -128,7 +136,10 @@ namespace FinabitAPI.Finabit.SystemData
                         data.ComBankAccount4 = Convert.ToString(reader["ComBankAccount4"]);
                         data.ComEmail = Convert.ToString(reader["ComEmail"]);
                         data.ComWebAddress = Convert.ToString(reader["ComWebAddress"]);
-                        data.ComLogo = (reader["ComLogo"] == DBNull.Value) ? null : ((byte[])reader["ComLogo"]);
+                        data.ComLogo =
+                            (reader["ComLogo"] == DBNull.Value)
+                                ? null
+                                : ((byte[])reader["ComLogo"]);
                         data.VATPrc = Convert.ToDecimal(reader["VATPrc"]);
                         data.AkcizaPartner = Convert.ToString(reader["AkcizaPartner"]);
                         data.VATPartner = Convert.ToString(reader["VATPartner"]);
@@ -137,8 +148,12 @@ namespace FinabitAPI.Finabit.SystemData
                         data.InfoText = Convert.ToString(reader["InfoText"]);
                         data.PayablesVATAccount = Convert.ToString(reader["PayablesVATAccount"]);
                         data.ReceivingBank = Convert.ToString(reader["ReceivingBank"]);
-                        data.ReceivingCustomerAccount = Convert.ToString(reader["ReceivingCustomerAccount"]);
-                        data.ReceivingCustomerName = Convert.ToString(reader["ReceivingCustomerName"]);
+                        data.ReceivingCustomerAccount = Convert.ToString(
+                            reader["ReceivingCustomerAccount"]
+                        );
+                        data.ReceivingCustomerName = Convert.ToString(
+                            reader["ReceivingCustomerName"]
+                        );
                         data.Mod36 = Convert.ToString(reader["Mod36"]);
 
                         break;
@@ -165,12 +180,12 @@ namespace FinabitAPI.Finabit.SystemData
             SqlConnection connection = _dbAccess.GetConnection();
             SqlCommand command = new SqlCommand("spSystemList", connection);
             command.CommandType = CommandType.StoredProcedure;
-            
+
             try
             {
                 SqlDataAdapter da = new SqlDataAdapter(command);
                 da.Fill(data);
-                
+
                 return data;
             }
             catch (Exception exception)
@@ -183,5 +198,23 @@ namespace FinabitAPI.Finabit.SystemData
         }
 
         #endregion
+
+        public SystemBaseInfo? GetSystemBasicInfo()
+        {
+            var data = ListSystemData();
+
+            if (data == null || data.ID == 0)
+                return null;
+
+            return new SystemBaseInfo
+            {
+                ID = data.ID,
+                ComName = data.ComName ?? string.Empty,
+                ComBusinessNo = data.ComBusinessNo ?? string.Empty,
+                ComPhone = data.ComPhone ?? string.Empty,
+                ComAddress = data.ComAddress ?? string.Empty,
+                ComEmail = data.ComEmail ?? string.Empty,
+            };
+        }
     }
 }

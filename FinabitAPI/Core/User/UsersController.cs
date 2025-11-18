@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using FinabitAPI.Core.User.dto;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FinabitAPI.Core.User
 {
@@ -26,44 +26,63 @@ namespace FinabitAPI.Core.User
         {
             try
             {
-                if (loginRequest == null || string.IsNullOrEmpty(loginRequest.UserName) || string.IsNullOrEmpty(loginRequest.Password))
+                if (
+                    loginRequest == null
+                    || string.IsNullOrEmpty(loginRequest.UserName)
+                    || string.IsNullOrEmpty(loginRequest.Password)
+                )
                 {
                     _logger.LogWarning("Invalid login request - missing username or password");
                     return BadRequest("Username and password are required");
                 }
 
-                _logger.LogInformation("Processing login request for username: {UserName}", loginRequest.UserName);
+                _logger.LogInformation(
+                    "Processing login request for username: {UserName}",
+                    loginRequest.UserName
+                );
 
                 var user = _usersService.GetLoginUser(loginRequest.UserName, loginRequest.Password);
 
                 if (user != null && user.ID > 0 && user.HasConnections && user.Status)
                 {
-                    _logger.LogInformation("Login successful for username: {UserName}", loginRequest.UserName);
-                    
+                    _logger.LogInformation(
+                        "Login successful for username: {UserName}",
+                        loginRequest.UserName
+                    );
+
                     // Return user info without sensitive data
-                    return Ok(new
-                    {
-                        userId = user.ID,
-                        userName = user.UserName,
-                        departmentId = user.DepartmentID,
-                        roleId = user.RoleID,
-                        partnerId = user.PartnerID,
-                        defaultPartnerName = user.DefaultPartnerName,
-                        isAuthoriser = user.IsAuthoriser,
-                        expireDate = user.ExpireDate,
-                        status = user.Status,
-                        message = "Login successful"
-                    });
+                    return Ok(
+                        new
+                        {
+                            userId = user.ID,
+                            userName = user.UserName,
+                            departmentId = user.DepartmentID,
+                            roleId = user.RoleID,
+                            partnerId = user.PartnerID,
+                            defaultPartnerName = user.DefaultPartnerName,
+                            isAuthoriser = user.IsAuthoriser,
+                            expireDate = user.ExpireDate,
+                            status = user.Status,
+                            message = "Login successful",
+                        }
+                    );
                 }
                 else
                 {
-                    _logger.LogWarning("Login failed for username: {UserName}", loginRequest.UserName);
+                    _logger.LogWarning(
+                        "Login failed for username: {UserName}",
+                        loginRequest.UserName
+                    );
                     return Unauthorized("Invalid username or password");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during login for username: {UserName}", loginRequest?.UserName);
+                _logger.LogError(
+                    ex,
+                    "Error during login for username: {UserName}",
+                    loginRequest?.UserName
+                );
                 return StatusCode(500, "Internal server error occurred during login");
             }
         }
@@ -78,21 +97,41 @@ namespace FinabitAPI.Core.User
         {
             try
             {
-                if (loginRequest == null || string.IsNullOrEmpty(loginRequest.UserName) || string.IsNullOrEmpty(loginRequest.Password))
+                if (
+                    loginRequest == null
+                    || string.IsNullOrEmpty(loginRequest.UserName)
+                    || string.IsNullOrEmpty(loginRequest.Password)
+                )
                 {
                     _logger.LogWarning("Invalid validation request - missing username or password");
                     return BadRequest("Username and password are required");
                 }
 
-                _logger.LogInformation("Validating user credentials for username: {UserName}", loginRequest.UserName);
+                _logger.LogInformation(
+                    "Validating user credentials for username: {UserName}",
+                    loginRequest.UserName
+                );
 
-                bool isValid = _usersService.ValidateUser(loginRequest.UserName, loginRequest.Password);
+                bool isValid = _usersService.ValidateUser(
+                    loginRequest.UserName,
+                    loginRequest.Password
+                );
 
-                return Ok(new { isValid = isValid, message = isValid ? "User is valid" : "Invalid credentials" });
+                return Ok(
+                    new
+                    {
+                        isValid = isValid,
+                        message = isValid ? "User is valid" : "Invalid credentials",
+                    }
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during user validation for username: {UserName}", loginRequest?.UserName);
+                _logger.LogError(
+                    ex,
+                    "Error during user validation for username: {UserName}",
+                    loginRequest?.UserName
+                );
                 return StatusCode(500, "Internal server error occurred during validation");
             }
         }
@@ -113,18 +152,20 @@ namespace FinabitAPI.Core.User
 
                 if (user != null && user.ID > 0)
                 {
-                    return Ok(new
-                    {
-                        userId = user.ID,
-                        userName = user.UserName,
-                        departmentId = user.DepartmentID,
-                        roleId = user.RoleID,
-                        partnerId = user.PartnerID,
-                        defaultPartnerName = user.DefaultPartnerName,
-                        isAuthoriser = user.IsAuthoriser,
-                        expireDate = user.ExpireDate,
-                        status = user.Status
-                    });
+                    return Ok(
+                        new
+                        {
+                            userId = user.ID,
+                            userName = user.UserName,
+                            departmentId = user.DepartmentID,
+                            roleId = user.RoleID,
+                            partnerId = user.PartnerID,
+                            defaultPartnerName = user.DefaultPartnerName,
+                            isAuthoriser = user.IsAuthoriser,
+                            expireDate = user.ExpireDate,
+                            status = user.Status,
+                        }
+                    );
                 }
                 else
                 {
@@ -135,6 +176,54 @@ namespace FinabitAPI.Core.User
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting user by ID: {UserID}", id);
+                return StatusCode(500, "Internal server error occurred while getting user");
+            }
+        }
+
+        /// <summary>
+        /// Gets user information by username
+        /// </summary>
+        /// <param name="username">The username to search</param>
+        /// <returns>User information if found</returns>
+        [HttpGet("by-username/{username}")]
+        public IActionResult GetUserByUsername(string username)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(username))
+                {
+                    _logger.LogWarning("Username is required for GetUserByUsername");
+                    return BadRequest("Username is required");
+                }
+
+                _logger.LogInformation("Getting user by username: {UserName}", username);
+
+                var user = _usersService.GetUserByUsername(username);
+
+                if (user != null && user.ID > 0)
+                {
+                    return Ok(
+                        new
+                        {
+                            userId = user.ID,
+                            userName = user.UserName,
+                            departmentId = user.DepartmentID,
+                            roleId = user.RoleID,
+                            partnerId = user.PartnerID,
+                            defaultPartnerName = user.DefaultPartnerName,
+                            isAuthoriser = user.IsAuthoriser,
+                            expireDate = user.ExpireDate,
+                            status = user.Status,
+                        }
+                    );
+                }
+
+                _logger.LogWarning("User not found with username: {UserName}", username);
+                return NotFound($"User with username '{username}' not found");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting user by username: {UserName}", username);
                 return StatusCode(500, "Internal server error occurred while getting user");
             }
         }
@@ -159,11 +248,22 @@ namespace FinabitAPI.Core.User
 
                 bool isActive = _usersService.CheckUserStatus(userName);
 
-                return Ok(new { userName = userName, isActive = isActive, message = isActive ? "User is active" : "User is not active" });
+                return Ok(
+                    new
+                    {
+                        userName = userName,
+                        isActive = isActive,
+                        message = isActive ? "User is active" : "User is not active",
+                    }
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking user status for username: {UserName}", userName);
+                _logger.LogError(
+                    ex,
+                    "Error checking user status for username: {UserName}",
+                    userName
+                );
                 return StatusCode(500, "Internal server error occurred while checking user status");
             }
         }
